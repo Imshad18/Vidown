@@ -33,17 +33,7 @@ Replace-Required 'job.Completed += delegate { RemoveCompleted(job); };' 'job.Com
 Replace-Required 'List<DownloadJob> jobs = manager.Snapshot();' "List<DownloadJob> jobs = manager.Snapshot();`r`n            jobs.Reverse();"
 Replace-Required 'activeSummaryLabel.Text = count == 0 ? "No active downloads." : count.ToString() + (count == 1 ? " active download" : " active downloads");' 'activeSummaryLabel.Text = count == 0 ? "No download entries." : count.ToString() + (count == 1 ? " download entry" : " download entries");'
 
-$oldManagerDelete = @'
-        public void Delete(DownloadJob job)
-        {
-            job.MarkDeleted();
-            lock (sync) { jobs.Remove(job); }
-            SaveState();
-            FireJobsChanged();
-            job.DiscardPartialFiles();
-        }
-'@
-$newManagerDelete = @'
+$clearMethod = @'
         public void Clear(DownloadJob job)
         {
             if (job == null || job.IsRunning) return;
@@ -54,16 +44,9 @@ $newManagerDelete = @'
         }
 
         public void Delete(DownloadJob job)
-        {
-            if (job == null) return;
-            job.MarkDeleted();
-            lock (sync) { jobs.Remove(job); }
-            SaveState();
-            FireJobsChanged();
-            job.DeleteAllFiles();
-        }
 '@
-Replace-Required $oldManagerDelete $newManagerDelete
+Replace-Required '        public void Delete(DownloadJob job)' $clearMethod
+Replace-Required '            job.DiscardPartialFiles();' '            job.DeleteAllFiles();'
 
 Replace-Required '        public void DiscardPartialFiles()' '        public void DeleteAllFiles()'
 $oldToken = @'
