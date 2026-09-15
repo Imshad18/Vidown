@@ -20,7 +20,7 @@ public final class YtDlpUpdater {
             if (now - last < UPDATE_INTERVAL_MS) return;
 
             try {
-                YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel.NIGHTLY);
+                YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel._NIGHTLY);
                 app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit()
                     .putLong(LAST_UPDATE, now)
