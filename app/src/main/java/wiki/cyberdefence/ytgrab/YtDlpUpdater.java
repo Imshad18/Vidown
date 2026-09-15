@@ -20,8 +20,26 @@ public final class YtDlpUpdater {
             long now = System.currentTimeMillis();
             long last = prefs.getLong(KEY, 0L);
             if (now - last < INTERVAL_MS) return true;
+            return updateLocked(app, prefs, now);
+        }
+    }
+
+    public static boolean forceUpdate(Context context) {
+        synchronized (LOCK) {
+            Context app = context.getApplicationContext();
+            SharedPreferences prefs = app.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            return updateLocked(app, prefs, System.currentTimeMillis());
+        }
+    }
+
+    private static boolean updateLocked(Context app, SharedPreferences prefs, long now) {
+        try {
+            YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel._STABLE);
+            prefs.edit().putLong(KEY, now).apply();
+            return true;
+        } catch (Exception stableError) {
             try {
-                YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel._STABLE);
+                YoutubeDL.getInstance().updateYoutubeDL(app, YoutubeDL.UpdateChannel._NIGHTLY);
                 prefs.edit().putLong(KEY, now).apply();
                 return true;
             } catch (Exception ignored) {
