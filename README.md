@@ -4,7 +4,7 @@ Vidown is a lightweight video downloader for **Windows** and **Android**.
 
 Paste a supported video link, analyze it, choose the available quality, and download. Vidown uses yt-dlp, so it can work with YouTube, Instagram, Facebook, X/Twitter, TikTok, Vimeo, Reddit, direct media links, and many other yt-dlp-supported sites when the media is publicly accessible or otherwise available to the user.
 
-# IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. YTGrab is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
+# IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. Vidown is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
 
 # Download
 
@@ -88,7 +88,7 @@ Administrator permission is normally not required.
 3. Allow installation from your browser or file manager if Android asks.
 4. Install and launch **Vidown**.
 
-The Android package ID is kept compatible with previous YTGrab Android builds so the new APK can update the existing installation and preserve saved jobs where possible.
+The Android package ID is kept compatible with previous Vidown Android builds so the new APK can update the existing installation and preserve saved jobs where possible.
 
 ## How to Use
 
@@ -182,7 +182,7 @@ If you downloaded Vidown from the official GitHub repository, verify that you ar
 
 ## Disclaimer
 
-YTGrab is intended for downloading content that you own, content that you have permission to download, or content whose licensing allows downloading.
+Vidown is intended for downloading content that you own, content that you have permission to download, or content whose licensing allows downloading.
 
 Users are responsible for complying with applicable copyright laws and the terms of service of the websites they use.
 
