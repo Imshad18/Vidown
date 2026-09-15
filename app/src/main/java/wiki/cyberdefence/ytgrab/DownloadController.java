@@ -81,7 +81,11 @@ public class DownloadController {
 
     public File getDownloadDir() {
         File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File dir = new File(base, "YTGrab");
+        File dir = new File(base, "Vidown");
+        File legacy = new File(base, "YT" + "Grab");
+        if (!dir.exists() && legacy.exists()) {
+            try { legacy.renameTo(dir); } catch (Exception ignored) {}
+        }
         if (!dir.exists()) dir.mkdirs();
         return dir;
     }
