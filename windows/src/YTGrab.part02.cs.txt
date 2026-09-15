@@ -1,0 +1,400 @@
+            job.MarkDeleted();
+            lock (sync) { jobs.Remove(job); }
+            SaveState();
+            FireJobsChanged();
+            job.DiscardPartialFiles();
+        }
+
+        public void PauseAllForShutdown()
+        {
+            List<DownloadJob> copy = Snapshot();
+            foreach (DownloadJob job in copy) job.PauseForShutdown();
+            SaveState();
+        }
+
+        public void SaveState()
+        {
+            List<DownloadJobModel> models = new List<DownloadJobModel>();
+            lock (sync)
+            {
+                foreach (DownloadJob job in jobs) models.Add(job.Model);
+            }
+            JobStore.Save(statePath, models);
+        }
+
+        void FireJobsChanged()
+        {
+            Action handler = JobsChanged;
+            if (handler != null) handler();
+        }
+    }
+
+    public sealed class DownloadJob
+    {
+        readonly DownloadManager manager;
+        readonly string ytDlpPath;
+        readonly string toolsDir;
+        readonly object sync = new object();
+        Process currentProcess;
+        volatile bool pauseRequested;
+        volatile bool deleted;
+        volatile bool running;
+
+        public readonly DownloadJobModel Model;
+        public event Action Changed;
+        public event Action Completed;
+
+        public bool IsRunning { get { return running; } }
+
+        public DownloadJob(DownloadManager manager, DownloadJobModel model, string ytDlpPath, string toolsDir)
+        {
+            this.manager = manager;
+            Model = model;
+            this.ytDlpPath = ytDlpPath;
+            this.toolsDir = toolsDir;
+        }
+
+        public void Resume()
+        {
+            lock (sync)
+            {
+                if (running || deleted) return;
+                if (!manager.EngineReady || !File.Exists(ytDlpPath))
+                {
+                    Model.State = "Paused";
+                    Model.Status = "Download engine is not ready yet. Try Resume again in a moment.";
+                    FireChanged();
+                    return;
+                }
+                try { Directory.CreateDirectory(Model.Folder); }
+                catch (Exception ex)
+                {
+                    Model.State = "Failed";
+                    Model.Status = "Cannot use output folder: " + ex.Message;
+                    FireChanged();
+                    return;
+                }
+                pauseRequested = false;
+                running = true;
+                Model.State = "Downloading";
+                Model.Status = Model.Progress > 0 ? "Resuming download..." : "Starting download...";
+                FireChanged();
+                string arguments = BuildArguments();
+                Thread t = new Thread(new ThreadStart(delegate { DownloadWorker(arguments); }));
+                t.IsBackground = true;
+                t.Start();
+            }
+        }
+
+        string BuildArguments()
+        {
+            string stableId = string.IsNullOrWhiteSpace(Model.VideoId) ? Model.JobId.Substring(0, 12) : Model.VideoId;
+            string template = Path.Combine(Model.Folder, SanitizeFileName(Model.Title) + " [" + stableId + "].%(ext)s");
+            StringBuilder args = new StringBuilder();
+            args.Append("--no-playlist --newline --windows-filenames --continue --part --ffmpeg-location ");
+            args.Append(Quote(toolsDir));
+            args.Append(" -o ");
+            args.Append(Quote(template));
+            args.Append(" ");
+
+            if (Model.Quality.StartsWith("Audio only", StringComparison.OrdinalIgnoreCase))
+            {
+                args.Append("-x --audio-format mp3 --audio-quality 0 ");
+            }
+            else if (Model.Quality.StartsWith("Best available", StringComparison.OrdinalIgnoreCase))
+            {
+                args.Append("-f ");
+                args.Append(Quote("bv*+ba/b"));
+                AppendCompatibleMp4Args(args);
+            }
+            else
+            {
+                Match m = Regex.Match(Model.Quality, @"(\d{3,4})p");
+                int height = m.Success ? int.Parse(m.Groups[1].Value) : 1080;
+                string format = "bv*[height<=" + height.ToString() + "]+ba/b[height<=" + height.ToString() + "]";
+                args.Append("-f ");
+                args.Append(Quote(format));
+                AppendCompatibleMp4Args(args);
+            }
+            args.Append(Quote(Model.Url));
+            return args.ToString();
+        }
+
+        void AppendCompatibleMp4Args(StringBuilder args)
+        {
+            args.Append(" --merge-output-format mkv --recode-video mp4 --postprocessor-args ");
+            args.Append(Quote("VideoConvertor+ffmpeg_o:-c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart"));
+            args.Append(" ");
+        }
+
+        void DownloadWorker(string arguments)
+        {
+            int exitCode = -1;
+            string failure = null;
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = ytDlpPath;
+                psi.Arguments = arguments;
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                psi.StandardOutputEncoding = Encoding.UTF8;
+                psi.StandardErrorEncoding = Encoding.UTF8;
+
+                Process p = new Process();
+                p.StartInfo = psi;
+                p.EnableRaisingEvents = true;
+                p.OutputDataReceived += ProcessLine;
+                p.ErrorDataReceived += ProcessLine;
+                currentProcess = p;
+                p.Start();
+                p.BeginOutputReadLine();
+                p.BeginErrorReadLine();
+                p.WaitForExit();
+                exitCode = p.ExitCode;
+                p.Close();
+                currentProcess = null;
+            }
+            catch (Exception ex)
+            {
+                failure = ex.Message;
+            }
+
+            running = false;
+            if (deleted) return;
+
+            if (pauseRequested)
+            {
+                Model.State = "Paused";
+                Model.Status = "Paused. Click Resume to continue from the saved partial file.";
+                FireChanged();
+                return;
+            }
+
+            if (exitCode == 0)
+            {
+                Model.Progress = 1000;
+                Model.State = "Completed";
+                Model.Status = "Download complete.";
+                FireChanged();
+                Action completedHandler = Completed;
+                if (completedHandler != null) completedHandler();
+            }
+            else if (!string.IsNullOrWhiteSpace(failure))
+            {
+                Model.State = "Failed";
+                Model.Status = "Download failed: " + failure;
+                FireChanged();
+            }
+            else
+            {
+                Model.State = "Failed";
+                Model.Status = "Download stopped. Click Resume to retry from saved partial data.";
+                FireChanged();
+            }
+        }
+
+        void ProcessLine(object sender, DataReceivedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(e.Data) || deleted) return;
+            string line = e.Data.Trim();
+            Match m = Regex.Match(line, @"\[download\]\s+(\d+(?:\.\d+)?)%");
+            if (m.Success)
+            {
+                double pct;
+                if (double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out pct))
+                {
+                    int value = (int)Math.Max(0, Math.Min(990, Math.Round(pct * 9.9)));
+                    Model.Progress = value;
+                    Model.Status = line;
+                    FireChanged();
+                    return;
+                }
+            }
+
+            if (line.IndexOf("VideoConvertor", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                line.IndexOf("Converting video", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                Model.Progress = Math.Max(Model.Progress, 990);
+                Model.Status = "Converting to compatible H.264/AAC MP4...";
+                FireChanged();
+                return;
+            }
+
+            if (line.IndexOf("Merging formats", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                line.IndexOf("ExtractAudio", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                line.IndexOf("Destination", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                Model.Status = line;
+                FireChanged();
+            }
+        }
+
+        public void Pause()
+        {
+            if (!running || deleted) return;
+            pauseRequested = true;
+            Model.State = "Pausing";
+            Model.Status = "Pausing...";
+            FireChanged();
+            KillProcessTree();
+        }
+
+        public void PauseForShutdown()
+        {
+            if (deleted) return;
+            if (running)
+            {
+                pauseRequested = true;
+                Model.State = "Paused";
+                Model.Status = "Paused because YTGrab closed. Click Resume to continue.";
+                FireChanged();
+                KillProcessTree();
+            }
+            else if (string.Equals(Model.State, "Downloading", StringComparison.OrdinalIgnoreCase) || string.Equals(Model.State, "Pausing", StringComparison.OrdinalIgnoreCase))
+            {
+                Model.State = "Paused";
+                Model.Status = "Paused because YTGrab closed. Click Resume to continue.";
+                FireChanged();
+            }
+        }
+
+        public void MarkDeleted()
+        {
+            deleted = true;
+            pauseRequested = true;
+            KillProcessTree();
+        }
+
+        void KillProcessTree()
+        {
+            Process p = currentProcess;
+            if (p == null) return;
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = "taskkill.exe";
+                psi.Arguments = "/PID " + p.Id.ToString() + " /T /F";
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                Process killer = Process.Start(psi);
+                if (killer != null) killer.Close();
+            }
+            catch
+            {
+                try { p.Kill(); } catch { }
+            }
+        }
+
+        public void DiscardPartialFiles()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(Model.Folder) || !Directory.Exists(Model.Folder)) return;
+                string token = string.IsNullOrWhiteSpace(Model.VideoId) ? "" : "[" + Model.VideoId + "]";
+                if (token.Length == 0) return;
+                string[] files = Directory.GetFiles(Model.Folder);
+                foreach (string path in files)
+                {
+                    string name = Path.GetFileName(path);
+                    if (name.IndexOf(token, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    string lower = name.ToLowerInvariant();
+                    if (lower.EndsWith(".part") || lower.IndexOf(".part-") >= 0 || lower.EndsWith(".ytdl") || Regex.IsMatch(lower, @"\.f\d+\.[^.]+$"))
+                    {
+                        try { File.Delete(path); } catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        void FireChanged()
+        {
+            Action handler = Changed;
+            if (handler != null) handler();
+        }
+
+        static string SanitizeFileName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) value = "YouTube video";
+            char[] invalid = Path.GetInvalidFileNameChars();
+            StringBuilder b = new StringBuilder(value.Length);
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                bool bad = false;
+                for (int j = 0; j < invalid.Length; j++) if (c == invalid[j]) { bad = true; break; }
+                if (!bad) b.Append(c);
+            }
+            string result = b.ToString().Trim().TrimEnd('.');
+            if (result.Length == 0) result = "YouTube video";
+            if (result.Length > 100) result = result.Substring(0, 100).Trim().TrimEnd('.');
+            return result;
+        }
+
+        static string Quote(string s) { return "\"" + s.Replace("\"", "\\\"") + "\""; }
+    }
+
+    public static class JobStore
+    {
+        const string Header = "YTGRABJOBS1";
+        static readonly object fileLock = new object();
+
+        public static List<DownloadJobModel> Load(string path)
+        {
+            List<DownloadJobModel> result = new List<DownloadJobModel>();
+            lock (fileLock)
+            {
+                try
+                {
+                    if (!File.Exists(path)) return result;
+                    string[] lines = File.ReadAllLines(path, Encoding.UTF8);
+                    if (lines.Length == 0 || lines[0] != Header) return result;
+                    for (int i = 1; i < lines.Length; i++)
+                    {
+                        if (string.IsNullOrWhiteSpace(lines[i])) continue;
+                        string[] p = lines[i].Split('|');
+                        if (p.Length != 9) continue;
+                        int progress;
+                        if (!int.TryParse(p[6], out progress)) progress = 0;
+                        DownloadJobModel m = new DownloadJobModel();
+                        m.JobId = Decode(p[0]);
+                        m.Url = Decode(p[1]);
+                        m.VideoId = Decode(p[2]);
+                        m.Title = Decode(p[3]);
+                        m.Quality = Decode(p[4]);
+                        m.Folder = Decode(p[5]);
+                        m.Progress = Math.Max(0, Math.Min(1000, progress));
+                        m.State = Decode(p[7]);
+                        m.Status = Decode(p[8]);
+                        if (string.IsNullOrWhiteSpace(m.JobId) || string.IsNullOrWhiteSpace(m.Url)) continue;
+                        result.Add(m);
+                    }
+                }
+                catch { }
+            }
+            return result;
+        }
+
+        public static void Save(string path, List<DownloadJobModel> models)
+        {
+            lock (fileLock)
+            {
+                try
+                {
+                    string dir = Path.GetDirectoryName(path);
+                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                    string temp = path + ".tmp";
+                    using (StreamWriter w = new StreamWriter(temp, false, Encoding.UTF8))
+                    {
+                        w.WriteLine(Header);
+                        foreach (DownloadJobModel m in models)
+                        {
+                            w.WriteLine(Encode(m.JobId) + "|" + Encode(m.Url) + "|" + Encode(m.VideoId) + "|" + Encode(m.Title) + "|" + Encode(m.Quality) + "|" + Encode(m.Folder) + "|" + m.Progress.ToString() + "|" + Encode(m.State) + "|" + Encode(m.Status));
+                        }
+                    }
+                    if (File.Exists(path)) File.Delete(path);
+                    File.Move(temp, path);
+                }

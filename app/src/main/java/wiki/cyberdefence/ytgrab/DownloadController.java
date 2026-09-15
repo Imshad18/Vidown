@@ -128,7 +128,7 @@ public class DownloadController {
             public Unit invoke(Float progress, Long eta, String line) {
                 DownloadJob j = jobs.get(id);
                 if (j != null && DownloadJob.DOWNLOADING.equals(j.status)) {
-                    int p = Math.max(0, Math.min(100, Math.round(progress)));
+                    int p = Math.max(0, Math.min(99, Math.round(progress)));
                     if (p != j.progress) {
                         j.progress = p;
                         notifyChanged();
@@ -148,7 +148,7 @@ public class DownloadController {
         request.addOption("--no-playlist");
         request.addOption("--retries", "5");
         request.addOption("--fragment-retries", "5");
-        request.addOption("--merge-output-format", "mp4");
+        request.addOption("--no-update");
         request.addOption("-o", new File(getDownloadDir(), "%(title).180B [%(id)s].%(ext)s").getAbsolutePath());
 
         if (playerClient != null) {
@@ -159,11 +159,16 @@ public class DownloadController {
             request.addOption("-x");
             request.addOption("--audio-format", "mp3");
             request.addOption("--audio-quality", "0");
-        } else if ("Best".equals(current.quality)) {
-            request.addOption("-f", "bestvideo+bestaudio/best");
         } else {
-            String h = current.quality.replace("p", "");
-            request.addOption("-f", "bestvideo[height<=" + h + "]+bestaudio/best[height<=" + h + "]");
+            if ("Best".equals(current.quality)) {
+                request.addOption("-f", "bestvideo*+bestaudio/best");
+            } else {
+                String h = current.quality.replace("p", "");
+                request.addOption("-f", "bestvideo*[height<=" + h + "]+bestaudio/best[height<=" + h + "]");
+            }
+            request.addOption("--merge-output-format", "mkv");
+            request.addOption("--recode-video", "mp4");
+            request.addOption("--postprocessor-args", "VideoConvertor+ffmpeg_o:-c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart");
         }
         return request;
     }

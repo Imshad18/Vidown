@@ -1,0 +1,277 @@
+                catch { }
+            }
+        }
+
+        static string Encode(string value)
+        {
+            if (value == null) value = "";
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
+        }
+
+        static string Decode(string value)
+        {
+            try { return Encoding.UTF8.GetString(Convert.FromBase64String(value)); }
+            catch { return ""; }
+        }
+    }
+
+    public sealed class ActiveDownloadsForm : Form
+    {
+        readonly DownloadManager manager;
+        FlowLayoutPanel jobsPanel;
+        Label emptyLabel;
+        Label countLabel;
+        readonly List<DownloadJobControl> controls = new List<DownloadJobControl>();
+
+        public ActiveDownloadsForm(DownloadManager manager)
+        {
+            this.manager = manager;
+            BuildUi();
+            manager.JobsChanged += ManagerJobsChanged;
+            FormClosed += delegate { manager.JobsChanged -= ManagerJobsChanged; DisposeControls(); };
+            Rebuild();
+        }
+
+        void BuildUi()
+        {
+            Text = "Active Downloads - YTGrab";
+            ClientSize = new Size(940, 620);
+            MinimumSize = new Size(820, 500);
+            StartPosition = FormStartPosition.CenterParent;
+            BackColor = Color.FromArgb(24, 26, 31);
+            ForeColor = Color.White;
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+
+            Label heading = MakeLabel("Active Downloads", 24F, FontStyle.Bold);
+            heading.Location = new Point(28, 20);
+            heading.AutoSize = true;
+            Controls.Add(heading);
+
+            countLabel = MakeLabel("", 9F, FontStyle.Regular);
+            countLabel.Location = new Point(31, 63);
+            countLabel.Size = new Size(860, 22);
+            countLabel.ForeColor = Color.Silver;
+            Controls.Add(countLabel);
+
+            Panel divider = new Panel();
+            divider.Location = new Point(30, 94);
+            divider.Size = new Size(875, 1);
+            divider.BackColor = Color.FromArgb(62, 65, 73);
+            divider.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            Controls.Add(divider);
+
+            emptyLabel = MakeLabel("No active or paused downloads.", 11F, FontStyle.Regular);
+            emptyLabel.ForeColor = Color.Gray;
+            emptyLabel.Location = new Point(31, 128);
+            emptyLabel.AutoSize = true;
+            Controls.Add(emptyLabel);
+
+            jobsPanel = new FlowLayoutPanel();
+            jobsPanel.Location = new Point(30, 112);
+            jobsPanel.Size = new Size(875, 470);
+            jobsPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            jobsPanel.AutoScroll = true;
+            jobsPanel.FlowDirection = FlowDirection.TopDown;
+            jobsPanel.WrapContents = false;
+            jobsPanel.BackColor = Color.FromArgb(24, 26, 31);
+            jobsPanel.Padding = new Padding(0, 0, 0, 8);
+            jobsPanel.SizeChanged += delegate
+            {
+                foreach (DownloadJobControl c in controls) c.Width = Math.Max(720, jobsPanel.ClientSize.Width - 24);
+            };
+            Controls.Add(jobsPanel);
+            jobsPanel.SendToBack();
+        }
+
+        Label MakeLabel(string text, float size, FontStyle style)
+        {
+            Label l = new Label();
+            l.Text = text;
+            l.Font = new Font("Segoe UI", size, style, GraphicsUnit.Point);
+            l.BackColor = Color.Transparent;
+            return l;
+        }
+
+        void ManagerJobsChanged()
+        {
+            if (IsDisposed) return;
+            try { BeginInvoke((MethodInvoker)delegate { Rebuild(); }); } catch { }
+        }
+
+        void Rebuild()
+        {
+            DisposeControls();
+            jobsPanel.Controls.Clear();
+            List<DownloadJob> jobs = manager.Snapshot();
+            countLabel.Text = jobs.Count == 0 ? "Nothing is currently downloading or waiting to resume." : jobs.Count.ToString() + (jobs.Count == 1 ? " job" : " jobs") + " shown";
+            emptyLabel.Visible = jobs.Count == 0;
+            foreach (DownloadJob job in jobs)
+            {
+                DownloadJobControl control = new DownloadJobControl(manager, job);
+                control.Width = Math.Max(800, jobsPanel.ClientSize.Width - 24);
+                control.Margin = new Padding(0, 0, 0, 10);
+                controls.Add(control);
+                jobsPanel.Controls.Add(control);
+            }
+        }
+
+        void DisposeControls()
+        {
+            foreach (DownloadJobControl c in controls) c.Dispose();
+            controls.Clear();
+        }
+    }
+
+    public sealed class DownloadJobControl : UserControl
+    {
+        readonly DownloadManager manager;
+        readonly DownloadJob job;
+        Label titleLabel;
+        Label metaLabel;
+        Label statusLabel;
+        ProgressBar progressBar;
+        Button pauseButton;
+        Button resumeButton;
+        Button deleteButton;
+        Button openButton;
+
+        public DownloadJobControl(DownloadManager manager, DownloadJob job)
+        {
+            this.manager = manager;
+            this.job = job;
+            BuildUi();
+            job.Changed += JobChanged;
+            Disposed += delegate { job.Changed -= JobChanged; };
+            RefreshUi();
+        }
+
+        void BuildUi()
+        {
+            Height = 160;
+            BackColor = Color.FromArgb(34, 37, 43);
+            BorderStyle = BorderStyle.FixedSingle;
+            Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+
+            titleLabel = new Label();
+            titleLabel.Location = new Point(16, 13);
+            titleLabel.Size = new Size(520, 24);
+            titleLabel.ForeColor = Color.White;
+            titleLabel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            titleLabel.AutoEllipsis = true;
+            Controls.Add(titleLabel);
+
+            metaLabel = new Label();
+            metaLabel.Location = new Point(16, 40);
+            metaLabel.Size = new Size(520, 20);
+            metaLabel.ForeColor = Color.Silver;
+            metaLabel.Font = new Font("Segoe UI", 8F);
+            metaLabel.AutoEllipsis = true;
+            Controls.Add(metaLabel);
+
+            pauseButton = MakeButton("Pause", 555, 12, 75, 30);
+            pauseButton.Click += delegate { job.Pause(); };
+            Controls.Add(pauseButton);
+
+            resumeButton = MakeButton("Resume", 638, 12, 75, 30);
+            resumeButton.Click += delegate { job.Resume(); };
+            Controls.Add(resumeButton);
+
+            openButton = MakeButton("Open", 721, 12, 65, 30);
+            openButton.Click += delegate { OpenFolder(); };
+            Controls.Add(openButton);
+
+            deleteButton = MakeButton("Delete", 794, 12, 70, 30);
+            deleteButton.Click += delegate { DeleteJob(); };
+            Controls.Add(deleteButton);
+
+            progressBar = new ProgressBar();
+            progressBar.Location = new Point(16, 80);
+            progressBar.Size = new Size(848, 19);
+            progressBar.Minimum = 0;
+            progressBar.Maximum = 1000;
+            Controls.Add(progressBar);
+
+            statusLabel = new Label();
+            statusLabel.Location = new Point(16, 109);
+            statusLabel.Size = new Size(848, 38);
+            statusLabel.ForeColor = Color.Gainsboro;
+            statusLabel.Font = new Font("Segoe UI", 8.5F);
+            statusLabel.AutoEllipsis = true;
+            Controls.Add(statusLabel);
+
+            Resize += delegate { LayoutButtons(); };
+        }
+
+        Button MakeButton(string text, int x, int y, int w, int h)
+        {
+            Button b = new Button();
+            b.Text = text;
+            b.Location = new Point(x, y);
+            b.Size = new Size(w, h);
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderColor = Color.FromArgb(85, 89, 99);
+            b.BackColor = Color.FromArgb(48, 52, 61);
+            b.ForeColor = Color.White;
+            b.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+            return b;
+        }
+
+        void LayoutButtons()
+        {
+            int right = ClientSize.Width - 16;
+            deleteButton.Left = right - deleteButton.Width;
+            openButton.Left = deleteButton.Left - 8 - openButton.Width;
+            resumeButton.Left = openButton.Left - 8 - resumeButton.Width;
+            pauseButton.Left = resumeButton.Left - 8 - pauseButton.Width;
+            titleLabel.Width = Math.Max(180, pauseButton.Left - 30);
+            metaLabel.Width = titleLabel.Width;
+            progressBar.Width = Math.Max(300, ClientSize.Width - 32);
+            statusLabel.Width = progressBar.Width;
+        }
+
+        void JobChanged()
+        {
+            if (IsDisposed) return;
+            try { BeginInvoke((MethodInvoker)delegate { RefreshUi(); }); } catch { }
+        }
+
+        void RefreshUi()
+        {
+            DownloadJobModel m = job.Model;
+            titleLabel.Text = m.Title;
+            metaLabel.Text = m.Quality + "  |  " + m.Folder;
+            int progress = Math.Max(0, Math.Min(1000, m.Progress));
+            progressBar.Value = progress;
+            string state = string.IsNullOrWhiteSpace(m.State) ? "Paused" : m.State;
+            statusLabel.Text = state + "  |  " + m.Status;
+            bool running = job.IsRunning;
+            pauseButton.Enabled = running && string.Equals(state, "Downloading", StringComparison.OrdinalIgnoreCase);
+            resumeButton.Enabled = !running && (string.Equals(state, "Paused", StringComparison.OrdinalIgnoreCase) || string.Equals(state, "Failed", StringComparison.OrdinalIgnoreCase));
+            deleteButton.Enabled = true;
+            openButton.Enabled = true;
+            LayoutButtons();
+        }
+
+        void DeleteJob()
+        {
+            DialogResult r = MessageBox.Show(this, "Delete this job from Active Downloads and discard its partial download files?", "YTGrab", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (r == DialogResult.Yes) manager.Delete(job);
+        }
+
+        void OpenFolder()
+        {
+            try
+            {
+                Directory.CreateDirectory(job.Model.Folder);
+                Process.Start("explorer.exe", Quote(job.Model.Folder));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        static string Quote(string s) { return "\"" + s.Replace("\"", "\\\"") + "\""; }
+    }
+}

@@ -1,0 +1,60 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble Windows source
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path windows\build | Out-Null
+          $parts = Get-ChildItem windows\src\YTGrab.part*.cs.txt | Sort-Object Name
+          if ($parts.Count -ne 4) { throw "Expected 4 Windows source parts, found $($parts.Count)." }
+          $text = foreach ($part in $parts) { Get-Content $part.FullName -Raw }
+          [System.IO.File]::WriteAllText((Join-Path $PWD 'windows\build\YTGrab.cs'), ($text -join "`r`n"), (New-Object System.Text.UTF8Encoding($false)))
+
+      - name: Compile Windows app
+        shell: powershell
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          if (!(Test-Path $csc)) { throw "Windows .NET Framework compiler not found." }
+          & $csc /nologo /target:winexe /optimize+ /platform:anycpu /out:windows\build\YTGrab.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll windows\build\YTGrab.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (!(Test-Path windows\build\YTGrab.exe)) { throw "YTGrab.exe was not produced." }
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: powershell
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw "Inno Setup compiler not found." }
+          & $iscc windows\installer\YTGrab.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (!(Test-Path windows\installer\output\YTGrab_Setup_v1.3.0.exe)) { throw "Installer was not produced." }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YTGrab-Windows-Installer
+          path: windows/installer/output/YTGrab_Setup_v1.3.0.exe
+
+      - name: Upload installer to YTGrab release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload youtube windows/installer/output/YTGrab_Setup_v1.3.0.exe --clobber

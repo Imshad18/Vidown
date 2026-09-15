@@ -1,0 +1,400 @@
+            urlLabel.AutoSize = true;
+            Controls.Add(urlLabel);
+
+            urlBox = new TextBox();
+            urlBox.Location = new Point(26, 101);
+            urlBox.Size = new Size(548, 28);
+            urlBox.BackColor = Color.FromArgb(42, 45, 52);
+            urlBox.ForeColor = Color.White;
+            urlBox.BorderStyle = BorderStyle.FixedSingle;
+            urlBox.Font = new Font("Segoe UI", 10F);
+            Controls.Add(urlBox);
+
+            analyzeButton = MakeButton("Analyze", 586, 99, 105, 32);
+            analyzeButton.Click += delegate { AnalyzeUrl(); };
+            Controls.Add(analyzeButton);
+
+            titleLabel = MakeLabel("Paste a YouTube link and click Analyze.", 10F, FontStyle.Regular);
+            titleLabel.Location = new Point(26, 147);
+            titleLabel.Size = new Size(665, 43);
+            titleLabel.ForeColor = Color.Gainsboro;
+            Controls.Add(titleLabel);
+
+            Label qualityLabel = MakeLabel("Quality", 9F, FontStyle.Bold);
+            qualityLabel.Location = new Point(26, 206);
+            qualityLabel.AutoSize = true;
+            Controls.Add(qualityLabel);
+
+            qualityBox = new ComboBox();
+            qualityBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            qualityBox.Location = new Point(26, 229);
+            qualityBox.Size = new Size(240, 28);
+            qualityBox.Enabled = false;
+            Controls.Add(qualityBox);
+
+            Label outLabel = MakeLabel("Save to", 9F, FontStyle.Bold);
+            outLabel.Location = new Point(286, 206);
+            outLabel.AutoSize = true;
+            Controls.Add(outLabel);
+
+            outputBox = new TextBox();
+            outputBox.Location = new Point(286, 229);
+            outputBox.Size = new Size(315, 28);
+            outputBox.BackColor = Color.FromArgb(42, 45, 52);
+            outputBox.ForeColor = Color.White;
+            outputBox.BorderStyle = BorderStyle.FixedSingle;
+            outputBox.Text = defaultOutput;
+            Controls.Add(outputBox);
+
+            browseButton = MakeButton("Browse", 611, 227, 80, 32);
+            browseButton.Click += delegate { BrowseOutput(); };
+            Controls.Add(browseButton);
+
+            downloadButton = MakeButton("Start Download", 26, 294, 190, 42);
+            downloadButton.Enabled = false;
+            downloadButton.Click += delegate { SubmitDownload(); };
+            Controls.Add(downloadButton);
+
+            Button anotherButton = MakeButton("Open Another +", 228, 294, 155, 42);
+            anotherButton.Click += delegate
+            {
+                AddDownloadForm another = new AddDownloadForm(ytDlpPath, toolsDir, outputBox.Text.Trim());
+                another.DownloadRequested += delegate(object sender, DownloadRequestEventArgs e)
+                {
+                    EventHandler<DownloadRequestEventArgs> handler = DownloadRequested;
+                    if (handler != null) handler(this, e);
+                };
+                another.Show(Owner);
+            };
+            Controls.Add(anotherButton);
+
+            statusLabel = MakeLabel("Ready.", 9F, FontStyle.Regular);
+            statusLabel.Location = new Point(26, 357);
+            statusLabel.Size = new Size(665, 22);
+            statusLabel.ForeColor = Color.Silver;
+            Controls.Add(statusLabel);
+        }
+
+        Label MakeLabel(string text, float size, FontStyle style)
+        {
+            Label l = new Label();
+            l.Text = text;
+            l.Font = new Font("Segoe UI", size, style, GraphicsUnit.Point);
+            l.BackColor = Color.Transparent;
+            return l;
+        }
+
+        Button MakeButton(string text, int x, int y, int w, int h)
+        {
+            Button b = new Button();
+            b.Text = text;
+            b.Location = new Point(x, y);
+            b.Size = new Size(w, h);
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderColor = Color.FromArgb(85, 89, 99);
+            b.BackColor = Color.FromArgb(48, 52, 61);
+            b.ForeColor = Color.White;
+            b.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            return b;
+        }
+
+        void AnalyzeUrl()
+        {
+            if (analyzing) return;
+            string url = urlBox.Text.Trim();
+            if (!IsYouTubeUrl(url))
+            {
+                MessageBox.Show(this, "Enter a valid YouTube URL.", "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            analyzing = true;
+            currentVideoId = "";
+            analyzeButton.Enabled = false;
+            downloadButton.Enabled = false;
+            qualityBox.Enabled = false;
+            titleLabel.Text = "Analyzing video...";
+            statusLabel.Text = "Reading available formats...";
+
+            Thread t = new Thread(new ThreadStart(delegate
+            {
+                try
+                {
+                    string info = RunAndCapture(ytDlpPath, "--no-warnings --no-playlist --print " + Quote("%(id)s") + " --print " + Quote("%(title)s") + " " + Quote(url));
+                    string formats = RunAndCapture(ytDlpPath, "--no-warnings --no-playlist -F " + Quote(url));
+                    List<string> infoLines = NonEmptyLines(info);
+                    string videoId = infoLines.Count > 0 ? infoLines[0] : "";
+                    string videoTitle = infoLines.Count > 1 ? infoLines[1] : "Video detected";
+                    List<int> heights = ParseHeights(formats);
+
+                    if (IsDisposed) return;
+                    try
+                    {
+                        BeginInvoke((MethodInvoker)delegate
+                        {
+                            currentVideoId = videoId;
+                            titleLabel.Text = videoTitle;
+                            qualityBox.Items.Clear();
+                            qualityBox.Items.Add("Best available");
+                            foreach (int h in heights)
+                            {
+                                if (h >= 2160) qualityBox.Items.Add(h.ToString() + "p (4K)");
+                                else if (h == 1440) qualityBox.Items.Add("1440p (2K)");
+                                else qualityBox.Items.Add(h.ToString() + "p");
+                            }
+                            qualityBox.Items.Add("Audio only (MP3)");
+                            qualityBox.SelectedIndex = 0;
+                            qualityBox.Enabled = true;
+                            downloadButton.Enabled = true;
+                            analyzeButton.Enabled = true;
+                            statusLabel.Text = "Ready to add to downloads.";
+                            analyzing = false;
+                        });
+                    }
+                    catch { }
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        BeginInvoke((MethodInvoker)delegate
+                        {
+                            analyzeButton.Enabled = true;
+                            titleLabel.Text = "Could not analyze this video.";
+                            statusLabel.Text = ex.Message;
+                            analyzing = false;
+                            MessageBox.Show(this, ex.Message, "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        });
+                    }
+                    catch { }
+                }
+            }));
+            t.IsBackground = true;
+            t.Start();
+        }
+
+        void SubmitDownload()
+        {
+            if (qualityBox.SelectedItem == null) return;
+            string url = urlBox.Text.Trim();
+            string folder = outputBox.Text.Trim();
+            if (!IsYouTubeUrl(url) || string.IsNullOrWhiteSpace(folder)) return;
+            try { Directory.CreateDirectory(folder); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Cannot use that output folder.\r\n\r\n" + ex.Message, "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            EventHandler<DownloadRequestEventArgs> handler = DownloadRequested;
+            if (handler != null) handler(this, new DownloadRequestEventArgs(url, currentVideoId, titleLabel.Text, qualityBox.SelectedItem.ToString(), folder));
+
+            currentVideoId = "";
+            urlBox.Clear();
+            qualityBox.Items.Clear();
+            qualityBox.Enabled = false;
+            downloadButton.Enabled = false;
+            analyzeButton.Enabled = true;
+            titleLabel.Text = "Download started in the background. Paste another YouTube link.";
+            statusLabel.Text = "Added. View progress from Active Downloads when you want.";
+            urlBox.Focus();
+        }
+
+        void BrowseOutput()
+        {
+            using (FolderBrowserDialog d = new FolderBrowserDialog())
+            {
+                d.Description = "Choose where downloaded videos will be saved";
+                d.SelectedPath = outputBox.Text;
+                if (d.ShowDialog(this) == DialogResult.OK) outputBox.Text = d.SelectedPath;
+            }
+        }
+
+        static List<int> ParseHeights(string text)
+        {
+            HashSet<int> heights = new HashSet<int>();
+            MatchCollection a = Regex.Matches(text, @"\b\d{2,5}x(\d{3,4})\b", RegexOptions.IgnoreCase);
+            foreach (Match m in a)
+            {
+                int h;
+                if (int.TryParse(m.Groups[1].Value, out h) && h >= 144 && h <= 4320) heights.Add(h);
+            }
+            MatchCollection b = Regex.Matches(text, @"\b(\d{3,4})p\b", RegexOptions.IgnoreCase);
+            foreach (Match m in b)
+            {
+                int h;
+                if (int.TryParse(m.Groups[1].Value, out h) && h >= 144 && h <= 4320) heights.Add(h);
+            }
+            List<int> result = heights.ToList();
+            result.Sort(delegate(int x, int y) { return y.CompareTo(x); });
+            return result;
+        }
+
+        static string RunAndCapture(string fileName, string arguments)
+        {
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = fileName;
+            psi.Arguments = arguments;
+            psi.UseShellExecute = false;
+            psi.CreateNoWindow = true;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.StandardOutputEncoding = Encoding.UTF8;
+            psi.StandardErrorEncoding = Encoding.UTF8;
+            using (Process p = Process.Start(psi))
+            {
+                string output = p.StandardOutput.ReadToEnd();
+                string error = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode != 0)
+                {
+                    string message = LastUsefulLine(error);
+                    if (string.IsNullOrWhiteSpace(message)) message = "yt-dlp returned an error.";
+                    throw new Exception(message);
+                }
+                return output;
+            }
+        }
+
+        static bool IsYouTubeUrl(string text)
+        {
+            Uri uri;
+            if (!Uri.TryCreate(text, UriKind.Absolute, out uri)) return false;
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return false;
+            string host = uri.Host.ToLowerInvariant();
+            return host == "youtu.be" || host == "youtube.com" || host.EndsWith(".youtube.com") || host == "youtube-nocookie.com" || host.EndsWith(".youtube-nocookie.com");
+        }
+
+        static string Quote(string s) { return "\"" + s.Replace("\"", "\\\"") + "\""; }
+
+        static List<string> NonEmptyLines(string text)
+        {
+            List<string> result = new List<string>();
+            if (text == null) return result;
+            string[] lines = text.Replace("\r", "").Split('\n');
+            for (int i = 0; i < lines.Length; i++) if (!string.IsNullOrWhiteSpace(lines[i])) result.Add(lines[i].Trim());
+            return result;
+        }
+
+        static string LastUsefulLine(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return "";
+            string[] lines = text.Replace("\r", "").Split('\n');
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                string line = lines[i].Trim();
+                if (!string.IsNullOrWhiteSpace(line)) return line;
+            }
+            return "";
+        }
+    }
+
+    public sealed class DownloadJobModel
+    {
+        public string JobId;
+        public string Url;
+        public string VideoId;
+        public string Title;
+        public string Quality;
+        public string Folder;
+        public int Progress;
+        public string State;
+        public string Status;
+    }
+
+    public sealed class DownloadManager
+    {
+        readonly object sync = new object();
+        readonly List<DownloadJob> jobs = new List<DownloadJob>();
+        readonly string ytDlpPath;
+        readonly string toolsDir;
+        readonly string statePath;
+        volatile bool engineReady;
+
+        public event Action JobsChanged;
+
+        public DownloadManager(string ytDlpPath, string toolsDir)
+        {
+            this.ytDlpPath = ytDlpPath;
+            this.toolsDir = toolsDir;
+            string stateDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YTGrab");
+            statePath = Path.Combine(stateDir, "jobs.dat");
+        }
+
+        public int Count
+        {
+            get { lock (sync) { return jobs.Count; } }
+        }
+
+        public bool EngineReady { get { return engineReady; } }
+
+        public void SetEngineReady(bool value)
+        {
+            engineReady = value;
+            FireJobsChanged();
+        }
+
+        public List<DownloadJob> Snapshot()
+        {
+            lock (sync) { return new List<DownloadJob>(jobs); }
+        }
+
+        public void LoadSavedJobs()
+        {
+            List<DownloadJobModel> models = JobStore.Load(statePath);
+            lock (sync)
+            {
+                jobs.Clear();
+                foreach (DownloadJobModel model in models)
+                {
+                    if (string.Equals(model.State, "Completed", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (string.Equals(model.State, "Downloading", StringComparison.OrdinalIgnoreCase) || string.Equals(model.State, "Pausing", StringComparison.OrdinalIgnoreCase))
+                    {
+                        model.State = "Paused";
+                        model.Status = "Interrupted by shutdown or restart. Click Resume to continue.";
+                    }
+                    DownloadJob job = CreateJob(model);
+                    jobs.Add(job);
+                }
+            }
+            SaveState();
+            FireJobsChanged();
+        }
+
+        public DownloadJob AddAndStart(string url, string videoId, string title, string quality, string folder)
+        {
+            DownloadJobModel model = new DownloadJobModel();
+            model.JobId = Guid.NewGuid().ToString("N");
+            model.Url = url;
+            model.VideoId = videoId == null ? "" : videoId.Trim();
+            model.Title = string.IsNullOrWhiteSpace(title) ? "YouTube video" : title;
+            model.Quality = quality;
+            model.Folder = folder;
+            model.Progress = 0;
+            model.State = "Paused";
+            model.Status = "Queued...";
+            DownloadJob job = CreateJob(model);
+            lock (sync) { jobs.Add(job); }
+            SaveState();
+            FireJobsChanged();
+            job.Resume();
+            return job;
+        }
+
+        DownloadJob CreateJob(DownloadJobModel model)
+        {
+            DownloadJob job = new DownloadJob(this, model, ytDlpPath, toolsDir);
+            job.Changed += delegate { SaveState(); };
+            job.Completed += delegate { RemoveCompleted(job); };
+            return job;
+        }
+
+        void RemoveCompleted(DownloadJob job)
+        {
+            lock (sync) { jobs.Remove(job); }
+            SaveState();
+            FireJobsChanged();
+        }
+
+        public void Delete(DownloadJob job)
+        {
