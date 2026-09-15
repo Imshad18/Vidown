@@ -1,2 +1,158 @@
-# YTgrab
-Youtube videos downloader for Windows. NOTE: Download only videos you own, have permission to download, or that are legally available for downloading.
+# YTGrab
+
+YTGrab is a lightweight Windows desktop application for downloading YouTube videos in multiple available resolutions.
+
+It supports multiple simultaneous downloads, download progress tracking, pause/resume controls, and recovery of incomplete downloads after restarting the PC.
+
+# IMPORTANT NOTE: Download only videos that you own, have permission to download, or that are legally available for downloading.
+
+## Features
+
+* Download YouTube videos in multiple available resolutions
+* Supports 720p, 1080p, 1440p, 4K and other available qualities
+* MP4 video downloads
+* MP3 audio-only downloads
+* Automatic video and audio merging when required
+* Multiple simultaneous downloads
+* Add new downloads while others are running
+* Separate **Active Downloads** page
+* Individual progress bars for every download
+* Pause individual downloads
+* Resume paused downloads
+* Resume incomplete downloads after restarting Windows
+* Delete individual download jobs
+* Cancel downloads
+* Choose download destination
+* Open download folder directly
+* Desktop shortcut
+* Start Menu shortcut
+* Built-in uninstaller
+* No Python installation required
+* No command prompt required during normal use
+
+## System Requirements
+
+* Windows 8 / 8.1 x64
+* Also compatible with newer 64-bit versions of Windows
+* Internet connection
+
+## Installation
+
+1. Download `YTGrab_Setup_v1.2.1.exe` from the **Releases** section.
+2. Run the installer.
+3. Complete the installation.
+4. Launch **YTGrab** using the Desktop shortcut or Start Menu.
+
+YTGrab installs by default to:
+
+```text
+%LOCALAPPDATA%\Programs\YTGrab
+```
+
+Administrator permission is normally not required.
+
+## How to Use
+
+1. Open YTGrab.
+2. Paste a YouTube video URL.
+3. Click **Analyze**.
+4. Select the required resolution or audio option.
+5. Select the download folder.
+6. Click **Start Download**.
+
+You can immediately add another video while the previous download continues.
+
+## Active Downloads
+
+Click **Active Downloads** to view running and incomplete downloads.
+
+Each download displays:
+
+* Video name
+* Selected quality
+* Download progress
+* Current status
+* Pause
+* Resume
+* Delete
+* Open Folder
+
+The Active Downloads page only opens when you click it.
+
+## Pause and Resume
+
+YTGrab keeps incomplete download data on disk.
+
+If you pause a download, close YTGrab, or restart your PC, the incomplete download can be resumed later from the **Active Downloads** page.
+
+When supported by the source server, YTGrab continues from the existing partial file instead of downloading the entire video again.
+
+## Multiple Downloads
+
+YTGrab can process multiple videos simultaneously.
+
+Use **+ Add Download** to continue adding videos while existing downloads are analyzing, downloading, or being processed.
+
+Each download runs independently.
+
+## Updating
+
+Install a newer version of YTGrab over the existing installation.
+
+Existing saved download jobs and incomplete downloads are preserved where possible.
+
+## Uninstalling
+
+YTGrab can be removed using:
+
+**Windows Control Panel → Programs and Features**
+
+or the **Uninstall YTGrab** Start Menu entry.
+
+## Technology
+
+YTGrab uses:
+
+* yt-dlp
+* FFmpeg
+* .NET Framework / Windows desktop components
+
+FFmpeg is used when separate video and audio streams need to be merged.
+
+## Windows Security Warning
+
+The installer is currently not digitally code-signed.
+
+Because of this, Windows SmartScreen may display an **Unknown Publisher** warning when running the installer.
+
+If you downloaded YTGrab from the official GitHub repository, verify that you are using the original release file before running it.
+
+## Disclaimer
+
+YTGrab is intended for downloading content that you own, content that you have permission to download, or content whose licensing allows downloading.
+
+Users are responsible for complying with applicable copyright laws and the terms of service of the websites they use.
+
+## License
+
+Add your preferred license here, for example:
+
+* MIT License
+* GPL-3.0
+* Proprietary / All Rights Reserved
+
+## Credits
+
+YTGrab relies on the excellent open-source projects:
+
+* yt-dlp
+* FFmpeg
+
+## Releases
+
+Download the latest installer from the GitHub **Releases** page:
+
+```text
+YTGrab_Setup_v1.2.1.exe
+```
+
