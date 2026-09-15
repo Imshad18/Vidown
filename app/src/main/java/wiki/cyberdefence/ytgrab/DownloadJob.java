@@ -17,6 +17,8 @@ public class DownloadJob {
     public String status;
     public int progress;
     public String error;
+    public long createdAt;
+    public String outputPath;
 
     public DownloadJob(String id, String url, String title, String quality) {
         this.id = id;
@@ -26,6 +28,8 @@ public class DownloadJob {
         this.status = QUEUED;
         this.progress = 0;
         this.error = "";
+        this.createdAt = System.currentTimeMillis();
+        this.outputPath = "";
     }
 
     public JSONObject toJson() throws JSONException {
@@ -37,6 +41,8 @@ public class DownloadJob {
         o.put("status", status);
         o.put("progress", progress);
         o.put("error", error);
+        o.put("createdAt", createdAt);
+        o.put("outputPath", outputPath);
         return o;
     }
 
@@ -50,6 +56,8 @@ public class DownloadJob {
         j.status = o.optString("status", PAUSED);
         j.progress = o.optInt("progress", 0);
         j.error = o.optString("error", "");
+        j.createdAt = o.optLong("createdAt", 0L);
+        j.outputPath = o.optString("outputPath", "");
         if (DOWNLOADING.equals(j.status) || QUEUED.equals(j.status)) {
             j.status = PAUSED;
         }
