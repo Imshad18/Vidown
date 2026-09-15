@@ -4,7 +4,7 @@ YTGrab is a lightweight Windows desktop application for downloading YouTube vide
 
 It supports multiple simultaneous downloads, download progress tracking, pause/resume controls, and recovery of incomplete downloads after restarting the PC.
 
-# IMPORTANT NOTE: Download only videos that you own, have permission to download, or that are legally available for downloading.
+# IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. YTGrab is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
 
 ## Features
 
