@@ -7,6 +7,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 public final class Ui {
     private Ui() {}
 
@@ -14,11 +16,31 @@ public final class Ui {
         return Math.round(v * c.getResources().getDisplayMetrics().density);
     }
 
+    public static int primaryColor(Context c) {
+        return ContextCompat.getColor(c, R.color.text_primary);
+    }
+
+    public static int secondaryColor(Context c) {
+        return ContextCompat.getColor(c, R.color.text_secondary);
+    }
+
+    public static int surfaceColor(Context c) {
+        return ContextCompat.getColor(c, R.color.surface);
+    }
+
+    public static int backgroundColor(Context c) {
+        return ContextCompat.getColor(c, R.color.background);
+    }
+
+    public static int errorColor(Context c) {
+        return ContextCompat.getColor(c, R.color.error);
+    }
+
     public static TextView text(Context c, String s, int sp, boolean bold) {
         TextView v = new TextView(c);
         v.setText(s);
         v.setTextSize(sp);
-        v.setTextColor(0xFF111111);
+        v.setTextColor(primaryColor(c));
         if (bold) v.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return v;
     }
