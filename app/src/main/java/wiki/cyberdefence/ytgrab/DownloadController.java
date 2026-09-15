@@ -19,7 +19,9 @@ import kotlin.Unit;
 import kotlin.jvm.functions.Function3;
 
 public class DownloadController {
-    public interface Listener { void onChanged(); }
+    public interface Listener {
+        void onChanged();
+    }
 
     private static DownloadController instance;
     private final Context app;
@@ -38,20 +40,36 @@ public class DownloadController {
         return instance;
     }
 
-    public void addListener(Listener l) { if (!listeners.contains(l)) listeners.add(l); }
-    public void removeListener(Listener l) { listeners.remove(l); }
+    public void addListener(Listener l) {
+        if (!listeners.contains(l)) listeners.add(l);
+    }
+
+    public void removeListener(Listener l) {
+        listeners.remove(l);
+    }
 
     private void notifyChanged() {
         persist();
         List<Listener> copy;
-        synchronized (listeners) { copy = new ArrayList<>(listeners); }
-        for (Listener l : copy) { try { l.onChanged(); } catch (Exception ignored) {} }
+        synchronized (listeners) {
+            copy = new ArrayList<>(listeners);
+        }
+        for (Listener l : copy) {
+            try {
+                l.onChanged();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
-    private void persist() { JobStore.save(app, getJobs()); }
+    private void persist() {
+        JobStore.save(app, getJobs());
+    }
 
     public List<DownloadJob> getJobs() {
-        synchronized (jobs) { return new ArrayList<>(jobs.values()); }
+        synchronized (jobs) {
+            return new ArrayList<>(jobs.values());
+        }
     }
 
     public void add(DownloadJob job) {
@@ -69,6 +87,7 @@ public class DownloadController {
     public void start(String id) {
         DownloadJob job = jobs.get(id);
         if (job == null || DownloadJob.DOWNLOADING.equals(job.status)) return;
+
         job.status = DownloadJob.QUEUED;
         job.error = "";
         notifyChanged();
@@ -76,66 +95,118 @@ public class DownloadController {
         executor.submit(() -> {
             DownloadJob current = jobs.get(id);
             if (current == null) return;
+
             current.status = DownloadJob.DOWNLOADING;
+            current.error = "";
             notifyChanged();
+
             try {
-                YoutubeDLRequest request = new YoutubeDLRequest(current.url);
-                request.addOption("--continue");
-                request.addOption("--newline");
-                request.addOption("--no-mtime");
-                request.addOption("--no-playlist");
-                request.addOption("--merge-output-format", "mp4");
-                request.addOption("-o", new File(getDownloadDir(), "%(title).180B [%(id)s].%(ext)s").getAbsolutePath());
-
-                if ("MP3".equals(current.quality)) {
-                    request.addOption("-x");
-                    request.addOption("--audio-format", "mp3");
-                    request.addOption("--audio-quality", "0");
-                } else if ("Best".equals(current.quality)) {
-                    request.addOption("-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best");
-                } else {
-                    String h = current.quality.replace("p", "");
-                    request.addOption("-f", "bestvideo[height<=" + h + "][ext=mp4]+bestaudio[ext=m4a]/best[height<=" + h + "][ext=mp4]/best[height<=" + h + "]");
-                }
-
-                Function3<Float, Long, String, Unit> callback = new Function3<Float, Long, String, Unit>() {
-                    @Override
-                    public Unit invoke(Float progress, Long eta, String line) {
-                        DownloadJob j = jobs.get(id);
-                        if (j != null && DownloadJob.DOWNLOADING.equals(j.status)) {
-                            int p = Math.max(0, Math.min(100, Math.round(progress)));
-                            if (p != j.progress) {
-                                j.progress = p;
-                                notifyChanged();
-                            }
-                        }
-                        return Unit.INSTANCE;
-                    }
-                };
-
-                YoutubeDL.getInstance().execute(request, id, callback);
+                YtDlpUpdater.ensureFresh(app);
+                executeDownload(current, id);
                 DownloadJob j = jobs.get(id);
                 if (j != null && DownloadJob.DOWNLOADING.equals(j.status)) {
                     j.progress = 100;
                     j.status = DownloadJob.COMPLETED;
+                    j.error = "";
                     notifyChanged();
                 }
-            } catch (Exception e) {
+            } catch (Exception first) {
                 DownloadJob j = jobs.get(id);
-                if (j != null && DownloadJob.DOWNLOADING.equals(j.status)) {
-                    j.status = DownloadJob.FAILED;
-                    j.error = e.getMessage() == null ? "Download failed" : e.getMessage();
-                    notifyChanged();
+                if (j == null || !DownloadJob.DOWNLOADING.equals(j.status)) return;
+
+                String raw = first.getMessage() == null ? "" : first.getMessage();
+                if (raw.contains("HTTP Error 403") || raw.contains("403: Forbidden")) {
+                    boolean updated = YtDlpUpdater.forceUpdate(app);
+                    if (updated) {
+                        try {
+                            j.error = "";
+                            j.status = DownloadJob.DOWNLOADING;
+                            notifyChanged();
+                            executeDownload(j, id);
+                            j.progress = 100;
+                            j.status = DownloadJob.COMPLETED;
+                            j.error = "";
+                            notifyChanged();
+                            return;
+                        } catch (Exception retry) {
+                            first = retry;
+                        }
+                    }
                 }
+
+                j.status = DownloadJob.FAILED;
+                j.error = friendlyError(first);
+                notifyChanged();
             }
         });
+    }
+
+    private void executeDownload(DownloadJob current, String id) throws Exception {
+        YoutubeDLRequest request = new YoutubeDLRequest(current.url);
+        request.addOption("--continue");
+        request.addOption("--newline");
+        request.addOption("--no-mtime");
+        request.addOption("--no-playlist");
+        request.addOption("--no-update");
+        request.addOption("-o", new File(getDownloadDir(), "%(title).180B [%(id)s].%(ext)s").getAbsolutePath());
+
+        if ("MP3".equals(current.quality)) {
+            request.addOption("-x");
+            request.addOption("--audio-format", "mp3");
+            request.addOption("--audio-quality", "0");
+        } else {
+            if ("Best".equals(current.quality)) {
+                request.addOption("-f", "bestvideo*+bestaudio/best");
+            } else {
+                String h = current.quality.replace("p", "");
+                request.addOption("-f", "bestvideo*[height<=" + h + "]+bestaudio/best[height<=" + h + "]");
+            }
+            request.addOption("--merge-output-format", "mkv");
+            request.addOption("--recode-video", "mp4");
+            request.addOption("--postprocessor-args", "VideoConvertor+ffmpeg_o:-c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart");
+        }
+
+        Function3<Float, Long, String, Unit> callback = new Function3<Float, Long, String, Unit>() {
+            @Override
+            public Unit invoke(Float progress, Long eta, String line) {
+                DownloadJob j = jobs.get(id);
+                if (j != null && DownloadJob.DOWNLOADING.equals(j.status)) {
+                    int p = Math.max(0, Math.min(99, Math.round(progress)));
+                    if (p != j.progress) {
+                        j.progress = p;
+                        notifyChanged();
+                    }
+                }
+                return Unit.INSTANCE;
+            }
+        };
+
+        YoutubeDL.getInstance().execute(request, id, callback);
+    }
+
+    private String friendlyError(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.trim().isEmpty()) return "Download failed. Tap Resume to retry.";
+        if (message.contains("HTTP Error 403") || message.contains("403: Forbidden")) {
+            return "YouTube rejected the request (HTTP 403). YTGrab refreshed its downloader engine. Tap Resume to retry.";
+        }
+        String[] lines = message.split("\\r?\\n");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i].trim();
+            if (line.startsWith("ERROR:")) return line.substring(6).trim();
+            if (!line.isEmpty() && !line.startsWith("WARNING:")) return line;
+        }
+        return "Download failed. Tap Resume to retry.";
     }
 
     public void pause(String id) {
         DownloadJob job = jobs.get(id);
         if (job == null) return;
         job.status = DownloadJob.PAUSED;
-        try { YoutubeDL.getInstance().destroyProcessById(id); } catch (Exception ignored) {}
+        try {
+            YoutubeDL.getInstance().destroyProcessById(id);
+        } catch (Exception ignored) {
+        }
         notifyChanged();
     }
 
@@ -146,7 +217,10 @@ public class DownloadController {
     }
 
     public void delete(String id) {
-        try { YoutubeDL.getInstance().destroyProcessById(id); } catch (Exception ignored) {}
+        try {
+            YoutubeDL.getInstance().destroyProcessById(id);
+        } catch (Exception ignored) {
+        }
         jobs.remove(id);
         notifyChanged();
     }
