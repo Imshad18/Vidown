@@ -6,6 +6,9 @@ It supports multiple simultaneous downloads, download progress tracking, pause/r
 
 # IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. YTGrab is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
 
+# Download: 
+https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Setup_v1.2.1.exe
+
 ## Features
 
 * Download YouTube videos in multiple available resolutions
