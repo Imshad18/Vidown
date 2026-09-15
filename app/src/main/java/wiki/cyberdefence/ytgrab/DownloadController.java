@@ -298,9 +298,59 @@ public class DownloadController {
         start(id);
     }
 
-    public void delete(String id) {
-        try { YoutubeDL.getInstance().destroyProcessById(id); } catch (Exception ignored) {}
+    public void clear(String id) {
+        DownloadJob job = jobs.get(id);
+        if (job == null) return;
+        if (DownloadJob.DOWNLOADING.equals(job.status) || DownloadJob.QUEUED.equals(job.status)) return;
         jobs.remove(id);
         notifyChanged();
+    }
+
+    public void delete(String id) {
+        DownloadJob job = jobs.get(id);
+        if (job == null) return;
+        try { YoutubeDL.getInstance().destroyProcessById(id); } catch (Exception ignored) {}
+        deleteFilesForJob(job);
+        jobs.remove(id);
+        notifyChanged();
+    }
+
+    private void deleteFilesForJob(DownloadJob job) {
+        File dir = getDownloadDir();
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        String token = extractBracketToken(job.outputPath);
+        String titleKey = normalize(job.title);
+        for (File f : files) {
+            if (!f.isFile()) continue;
+            String name = f.getName();
+            boolean match;
+            if (!token.isEmpty()) {
+                match = name.contains(token);
+            } else {
+                String fileKey = normalize(name);
+                match = !titleKey.isEmpty() && (fileKey.contains(titleKey) || titleKey.contains(fileKey));
+            }
+            if (match) {
+                try { f.delete(); } catch (Exception ignored) {}
+            }
+        }
+
+        if (job.outputPath != null && !job.outputPath.trim().isEmpty()) {
+            try {
+                File direct = new File(job.outputPath.trim());
+                if (direct.isFile()) direct.delete();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private String extractBracketToken(String path) {
+        if (path == null || path.trim().isEmpty()) return "";
+        String name = new File(path).getName();
+        int close = name.lastIndexOf(']');
+        int open = close > 0 ? name.lastIndexOf('[', close) : -1;
+        if (open < 0 || close <= open + 1) return "";
+        return name.substring(open, close + 1);
     }
 }
