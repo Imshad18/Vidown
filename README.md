@@ -1,13 +1,18 @@
 # YTGrab
 
-YTGrab is a lightweight Windows desktop application for downloading YouTube videos in multiple available resolutions.
+YTGrab is a lightweight YouTube downloader available for both **Windows** and **Android**.
 
-It supports multiple simultaneous downloads, download progress tracking, pause/resume controls, and recovery of incomplete downloads after restarting the PC.
+It supports multiple available resolutions, MP4 video downloads, MP3 audio-only downloads, multiple simultaneous downloads, progress tracking, pause/resume controls, and recovery of incomplete downloads after restarting the app or device.
 
 # IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. YTGrab is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
 
-# Download: 
+# Download
+
+**Windows:**  
 https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Setup_v1.2.1.exe
+
+**Android APK:**  
+https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.0.0.apk
 
 ## Features
 
@@ -22,26 +27,39 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Setup_v1.2.1
 * Individual progress bars for every download
 * Pause individual downloads
 * Resume paused downloads
-* Resume incomplete downloads after restarting Windows
+* Resume incomplete downloads after restarting the app or device
 * Delete individual download jobs
 * Cancel downloads
 * Choose download destination
 * Open download folder directly
-* Desktop shortcut
-* Start Menu shortcut
-* Built-in uninstaller
 * No Python installation required
 * No command prompt required during normal use
 
+### Windows-specific features
+
+* Desktop shortcut
+* Start Menu shortcut
+* Built-in uninstaller
+
 ## System Requirements
+
+### Windows
 
 * Windows 8 / 8.1 x64
 * Also compatible with newer 64-bit versions of Windows
 * Internet connection
 
+### Android
+
+* Android device compatible with the APK build
+* Internet connection
+* Permission to install APK files from your browser or file manager when required
+
 ## Installation
 
-1. Download `YTGrab_Setup_v1.2.1.exe` from the **Releases** section.
+### Windows
+
+1. Download `YTGrab_Setup_v1.2.1.exe` from the link above or the **Releases** section.
 2. Run the installer.
 3. Complete the installation.
 4. Launch **YTGrab** using the Desktop shortcut or Start Menu.
@@ -53,6 +71,13 @@ YTGrab installs by default to:
 ```
 
 Administrator permission is normally not required.
+
+### Android
+
+1. Download `YTGrab_Android_v1.0.0.apk` from the link above.
+2. Open the APK on your Android device.
+3. Allow installation from your browser or file manager if Android asks.
+4. Install and launch **YTGrab**.
 
 ## How to Use
 
@@ -86,7 +111,7 @@ The Active Downloads page only opens when you click it.
 
 YTGrab keeps incomplete download data on disk.
 
-If you pause a download, close YTGrab, or restart your PC, the incomplete download can be resumed later from the **Active Downloads** page.
+If you pause a download, close YTGrab, or restart your PC or Android device, the incomplete download can be resumed later from the **Active Downloads** page.
 
 When supported by the source server, YTGrab continues from the existing partial file instead of downloading the entire video again.
 
@@ -100,11 +125,19 @@ Each download runs independently.
 
 ## Updating
 
+### Windows
+
 Install a newer version of YTGrab over the existing installation.
+
+### Android
+
+Install the newer APK over the existing installation.
 
 Existing saved download jobs and incomplete downloads are preserved where possible.
 
 ## Uninstalling
+
+### Windows
 
 YTGrab can be removed using:
 
@@ -112,19 +145,24 @@ YTGrab can be removed using:
 
 or the **Uninstall YTGrab** Start Menu entry.
 
+### Android
+
+Uninstall YTGrab from Android's normal app settings or app info screen.
+
 ## Technology
 
 YTGrab uses:
 
 * yt-dlp
 * FFmpeg
-* .NET Framework / Windows desktop components
+* .NET Framework / Windows desktop components on Windows
+* Native Android components on Android
 
 FFmpeg is used when separate video and audio streams need to be merged.
 
 ## Windows Security Warning
 
-The installer is currently not digitally code-signed.
+The Windows installer is currently not digitally code-signed.
 
 Because of this, Windows SmartScreen may display an **Unknown Publisher** warning when running the installer.
 
@@ -153,9 +191,9 @@ YTGrab relies on the excellent open-source projects:
 
 ## Releases
 
-Download the latest installer from the GitHub **Releases** page:
+Download the latest Windows installer or Android APK from the GitHub **Releases** page:
 
 ```text
 YTGrab_Setup_v1.2.1.exe
+YTGrab_Android_v1.0.0.apk
 ```
-
