@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application
-        android:name=".YTGrabApp"
+        android:name=".VidownApp"
         android:allowBackup="true"
         android:extractNativeLibs="true"
         android:icon="@drawable/ic_launcher"
