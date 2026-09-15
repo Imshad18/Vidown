@@ -51,6 +51,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(Ui.dp(this, 18), Ui.dp(this, 20), Ui.dp(this, 18), Ui.dp(this, 12));
+        root.setBackgroundColor(Ui.backgroundColor(this));
 
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
@@ -66,8 +67,10 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         back.setOnClickListener(v -> finish());
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(Ui.backgroundColor(this));
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
+        list.setBackgroundColor(Ui.backgroundColor(this));
         scroll.addView(list);
         root.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
@@ -75,7 +78,9 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
     }
 
     @Override
-    public void onChanged() { runOnUiThread(this::render); }
+    public void onChanged() {
+        runOnUiThread(this::render);
+    }
 
     private void render() {
         if (list == null) return;
@@ -84,30 +89,31 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
 
         if (jobs.isEmpty()) {
             TextView empty = Ui.text(this, "No downloads yet.", 15, false);
-            empty.setTextColor(0xFF666666);
+            empty.setTextColor(Ui.secondaryColor(this));
             empty.setPadding(0, Ui.dp(this, 28), 0, 0);
             list.addView(empty, Ui.matchWrap());
             return;
         }
 
-        for (DownloadJob j : jobs) list.addView(card(j), Ui.matchWrap());
+        for (DownloadJob j : jobs) {
+            View card = card(j);
+            LinearLayout.LayoutParams lp = Ui.matchWrap();
+            lp.setMargins(0, Ui.dp(this, 12), 0, 0);
+            list.addView(card, lp);
+        }
     }
 
     private View card(DownloadJob j) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
-        card.setBackgroundColor(0xFFF2F2F2);
-
-        LinearLayout.LayoutParams outer = Ui.matchWrap();
-        outer.setMargins(0, Ui.dp(this, 12), 0, 0);
-        card.setLayoutParams(outer);
+        card.setBackgroundColor(Ui.surfaceColor(this));
 
         TextView title = Ui.text(this, j.title, 16, true);
         card.addView(title, Ui.matchWrap());
 
         TextView meta = Ui.text(this, j.quality + "  •  " + j.status + "  •  " + j.progress + "%", 13, false);
-        meta.setTextColor(0xFF666666);
+        meta.setTextColor(Ui.secondaryColor(this));
         LinearLayout.LayoutParams metaLp = Ui.matchWrap();
         metaLp.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 8));
         card.addView(meta, metaLp);
@@ -119,8 +125,10 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
 
         if (DownloadJob.FAILED.equals(j.status) && j.error != null && !j.error.isEmpty()) {
             TextView error = Ui.text(this, j.error, 11, false);
-            error.setTextColor(0xFFB00020);
-            card.addView(error, Ui.matchWrap());
+            error.setTextColor(Ui.errorColor(this));
+            LinearLayout.LayoutParams errorLp = Ui.matchWrap();
+            errorLp.setMargins(0, Ui.dp(this, 8), 0, 0);
+            card.addView(error, errorLp);
         }
 
         LinearLayout buttons = new LinearLayout(this);
