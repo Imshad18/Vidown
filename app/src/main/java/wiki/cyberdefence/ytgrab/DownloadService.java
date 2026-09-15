@@ -37,7 +37,7 @@ public class DownloadService extends Service implements DownloadController.Liste
     private void ensureChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager nm = getSystemService(NotificationManager.class);
-            NotificationChannel c = new NotificationChannel(CHANNEL, "YTGrab downloads", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel c = new NotificationChannel(CHANNEL, "Vidown downloads", NotificationManager.IMPORTANCE_LOW);
             c.setDescription("Download progress and status");
             nm.createNotificationChannel(c);
         }
@@ -45,7 +45,7 @@ public class DownloadService extends Service implements DownloadController.Liste
 
     private Notification preparingNotification() {
         return baseBuilder()
-            .setContentTitle("YTGrab")
+            .setContentTitle("Vidown")
             .setContentText("Preparing download…")
             .setProgress(0, 0, true)
             .build();
@@ -92,7 +92,7 @@ public class DownloadService extends Service implements DownloadController.Liste
                 if (DownloadJob.DOWNLOADING.equals(job.status)) downloading++;
             }
             int average = active.isEmpty() ? 0 : sum / active.size();
-            builder.setContentTitle("YTGrab • " + active.size() + " active downloads");
+            builder.setContentTitle("Vidown • " + active.size() + " active downloads");
             builder.setContentText(average + "% overall • " + downloading + " downloading");
             builder.setProgress(100, average, false);
         }

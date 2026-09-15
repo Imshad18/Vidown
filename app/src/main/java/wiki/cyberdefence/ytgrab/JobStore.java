@@ -35,9 +35,12 @@ public final class JobStore {
         String raw = p.getString(KEY, "[]");
         try {
             JSONArray a = new JSONArray(raw);
+            long legacyBase = System.currentTimeMillis() - Math.max(1, a.length());
             for (int i = 0; i < a.length(); i++) {
                 JSONObject o = a.getJSONObject(i);
-                out.add(DownloadJob.fromJson(o));
+                DownloadJob j = DownloadJob.fromJson(o);
+                if (j.createdAt <= 0L) j.createdAt = legacyBase + i;
+                out.add(j);
             }
         } catch (Exception ignored) {
         }
