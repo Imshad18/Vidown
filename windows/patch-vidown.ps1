@@ -126,14 +126,7 @@ $newRefresh = @'
 '@
 Replace-Required $oldRefresh $newRefresh
 
-$oldDeleteJob = @'
-        void DeleteJob()
-        {
-            DialogResult r = MessageBox.Show(this, "Delete this job from Active Downloads and discard its partial download files?", "YTGrab", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (r == DialogResult.Yes) manager.Delete(job);
-        }
-'@
-$newDeleteJob = @'
+$clearJobMethod = @'
         void ClearJob()
         {
             if (job.IsRunning) return;
@@ -141,12 +134,9 @@ $newDeleteJob = @'
         }
 
         void DeleteJob()
-        {
-            DialogResult r = MessageBox.Show(this, "Delete this entry and its downloaded or partial files? Use Clear if you only want to remove the entry from Vidown.", "Vidown", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (r == DialogResult.Yes) manager.Delete(job);
-        }
 '@
-Replace-Required $oldDeleteJob $newDeleteJob
+Replace-Required '        void DeleteJob()' $clearJobMethod
+Replace-Required '            DialogResult r = MessageBox.Show(this, "Delete this job from Active Downloads and discard its partial download files?", "Vidown", MessageBoxButtons.YesNo, MessageBoxIcon.Question);' '            DialogResult r = MessageBox.Show(this, "Delete this entry and its downloaded or partial files? Use Clear if you only want to remove the entry from Vidown.", "Vidown", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);'
 
 $playMethods = @'
         void PlayFile()
