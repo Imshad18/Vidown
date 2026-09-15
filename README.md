@@ -4,15 +4,15 @@ Vidown is a lightweight video downloader for **Windows** and **Android**.
 
 Paste a supported video link, analyze it, choose the available quality, and download. Vidown uses yt-dlp, so it can work with YouTube, Instagram, Facebook, X/Twitter, TikTok, Vimeo, Reddit, direct media links, and many other yt-dlp-supported sites when the media is publicly accessible or otherwise available to the user.
 
-# IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. YTGrab is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
+# IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. Vidown is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
 
 # Download
 
 **Windows:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Setup_v2.0.0.exe
+https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Setup_v2.0.1.exe
 
 **Android APK:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Android_v2.0.0.apk
+https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Android_v2.0.1.apk
 
 ## Features
 
@@ -30,13 +30,13 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Android_v2.0
 * Newest download entries are shown first
 * Individual progress bars for every download
 * **Play** button for completed downloads
+* **Clear** removes only the entry from the Vidown list/history and keeps the downloaded file
+* **Delete** removes the entry and its downloaded or partial files
 * Download progress shown in Android notifications
 * Notifications automatically disappear when no download is active
 * Pause individual downloads
 * Resume paused downloads
 * Resume incomplete downloads after restarting the app or device
-* Delete individual download jobs
-* Cancel downloads
 * Android dark mode option
 * Android automatically refreshes the yt-dlp engine and retries supported YouTube HTTP 403 failures with fallback clients
 * Choose download destination on Windows
@@ -68,7 +68,7 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Android_v2.0
 
 ### Windows
 
-1. Download `Vidown_Setup_v2.0.0.exe` from the link above or the **Releases** section.
+1. Download `Vidown_Setup_v2.0.1.exe` from the link above or the **Releases** section.
 2. Run the installer.
 3. Complete the installation.
 4. Launch **Vidown** using the Desktop shortcut or Start Menu.
@@ -83,12 +83,12 @@ Administrator permission is normally not required.
 
 ### Android
 
-1. Download `Vidown_Android_v2.0.0.apk` from the link above.
+1. Download `Vidown_Android_v2.0.1.apk` from the link above.
 2. Open the APK on your Android device.
 3. Allow installation from your browser or file manager if Android asks.
 4. Install and launch **Vidown**.
 
-The Android package ID is kept compatible with previous YTGrab Android builds so the new APK can update the existing installation and preserve saved jobs where possible.
+The Android package ID is kept compatible with previous Android builds so the new APK can update the existing installation and preserve saved jobs where possible.
 
 ## How to Use
 
@@ -118,8 +118,13 @@ Newest entries appear at the top. Each entry can show:
 * Pause
 * Resume
 * Play when completed
+* Clear
 * Delete
 * Open Folder on Windows
+
+**Clear** removes only the entry from the Vidown interface/history. It does not delete the downloaded file.
+
+**Delete** removes the entry and deletes its downloaded or partial files.
 
 ## Pause and Resume
 
@@ -182,7 +187,7 @@ If you downloaded Vidown from the official GitHub repository, verify that you ar
 
 ## Disclaimer
 
-YTGrab is intended for downloading content that you own, content that you have permission to download, or content whose licensing allows downloading.
+Vidown is intended for downloading content that you own, content that you have permission to download, or content whose licensing allows downloading.
 
 Users are responsible for complying with applicable copyright laws and the terms of service of the websites they use.
 
@@ -206,6 +211,6 @@ Vidown relies on the excellent open-source projects:
 Download the latest Windows installer or Android APK from the GitHub **Releases** page:
 
 ```text
-Vidown_Setup_v2.0.0.exe
-Vidown_Android_v2.0.0.apk
+Vidown_Setup_v2.0.1.exe
+Vidown_Android_v2.0.1.apk
 ```
