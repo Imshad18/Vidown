@@ -1,6 +1,8 @@
 package wiki.cyberdefence.ytgrab;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,11 +12,15 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
+import java.io.File;
 import java.util.List;
+import java.util.Locale;
 
 public class ActiveDownloadsActivity extends AppCompatActivity implements DownloadController.Listener {
     private LinearLayout list;
@@ -136,21 +142,49 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         buttonsLp.setMargins(0, Ui.dp(this, 10), 0, 0);
         card.addView(buttons, buttonsLp);
 
-        if (DownloadJob.DOWNLOADING.equals(j.status) || DownloadJob.QUEUED.equals(j.status)) {
+        if (DownloadJob.COMPLETED.equals(j.status)) {
+            Button play = Ui.button(this, "▶ Play");
+            buttons.addView(play, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
+            play.setOnClickListener(v -> play(j));
+        } else if (DownloadJob.DOWNLOADING.equals(j.status) || DownloadJob.QUEUED.equals(j.status)) {
             Button pause = Ui.button(this, "Pause");
             buttons.addView(pause, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
             pause.setOnClickListener(v -> service(DownloadService.ACTION_PAUSE, j.id));
-        } else if (!DownloadJob.COMPLETED.equals(j.status)) {
+        } else {
             Button resume = Ui.button(this, "Resume");
             buttons.addView(resume, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
             resume.setOnClickListener(v -> service(DownloadService.ACTION_RESUME, j.id));
         }
 
         Button delete = Ui.button(this, "Delete");
-        buttons.addView(delete, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
+        LinearLayout.LayoutParams deleteLp = new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f);
+        deleteLp.setMargins(Ui.dp(this, 8), 0, 0, 0);
+        buttons.addView(delete, deleteLp);
         delete.setOnClickListener(v -> service(DownloadService.ACTION_DELETE, j.id));
 
         return card;
+    }
+
+    private void play(DownloadJob job) {
+        File file = DownloadController.getInstance(this).findOutputFile(job);
+        if (file == null || !file.isFile()) {
+            Toast.makeText(this, "Downloaded file could not be found.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
+            String lower = file.getName().toLowerCase(Locale.US);
+            String mime = lower.endsWith(".mp3") || lower.endsWith(".m4a") ? "audio/*" : "video/*";
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(uri, mime);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(i);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No compatible media player is installed.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open this file.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void service(String action, String id) {
