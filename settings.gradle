@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "YTGrab"
+rootProject.name = "Vidown"
 include(":app")
