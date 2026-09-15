@@ -1,0 +1,400 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Windows.Forms;
+
+namespace YTGrab
+{
+    static class Program
+    {
+        [STAThread]
+        static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new MainForm());
+        }
+    }
+
+    public sealed class MainForm : Form
+    {
+        const string YtDlpUrl = "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe";
+        const string YtDlpSha256 = "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a";
+        const string FfmpegUrl = "https://github.com/GyanD/codexffmpeg/releases/download/7.0.2/ffmpeg-7.0.2-essentials_build.zip";
+        const string FfmpegSha256 = "d5308d30872b2739cf53169df61faba8639d39a19b20b91e611c177ef676f64c";
+
+        readonly string toolsDir;
+        readonly string ytDlpPath;
+        readonly string ffmpegPath;
+        readonly string ffprobePath;
+        readonly DownloadManager manager;
+
+        Button addButton;
+        Button activeButton;
+        Button openDefaultButton;
+        Label statusLabel;
+        Label engineLabel;
+        Label activeSummaryLabel;
+        bool toolsReady;
+        string defaultOutput;
+        ActiveDownloadsForm activeForm;
+
+        public MainForm()
+        {
+            toolsDir = Path.Combine(Application.StartupPath, "Tools");
+            ytDlpPath = Path.Combine(toolsDir, "yt-dlp.exe");
+            ffmpegPath = Path.Combine(toolsDir, "ffmpeg.exe");
+            ffprobePath = Path.Combine(toolsDir, "ffprobe.exe");
+            defaultOutput = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "YTGrab");
+            manager = new DownloadManager(ytDlpPath, toolsDir);
+            manager.JobsChanged += ManagerJobsChanged;
+            BuildUi();
+            manager.LoadSavedJobs();
+            Shown += delegate { StartToolSetup(); };
+            FormClosing += OnFormClosing;
+        }
+
+        void BuildUi()
+        {
+            Text = "YTGrab";
+            ClientSize = new Size(780, 470);
+            MinimumSize = new Size(720, 450);
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = Color.FromArgb(24, 26, 31);
+            ForeColor = Color.White;
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+
+            Label heading = MakeLabel("YTGrab", 30F, FontStyle.Bold);
+            heading.Location = new Point(35, 28);
+            heading.AutoSize = true;
+            Controls.Add(heading);
+
+            Label sub = MakeLabel("Concurrent YouTube downloads for Windows 8", 10F, FontStyle.Regular);
+            sub.ForeColor = Color.Silver;
+            sub.Location = new Point(38, 74);
+            sub.AutoSize = true;
+            Controls.Add(sub);
+
+            addButton = MakeButton("+  Add Download", 38, 132, 220, 52);
+            addButton.Enabled = false;
+            addButton.Click += delegate { OpenAddWindow(); };
+            Controls.Add(addButton);
+
+            activeButton = MakeButton("Active Downloads", 278, 132, 220, 52);
+            activeButton.Click += delegate { OpenActiveDownloads(); };
+            Controls.Add(activeButton);
+
+            openDefaultButton = MakeButton("Open Downloads Folder", 518, 132, 220, 52);
+            openDefaultButton.Click += delegate { OpenFolder(defaultOutput); };
+            Controls.Add(openDefaultButton);
+
+            Panel card = new Panel();
+            card.Location = new Point(38, 218);
+            card.Size = new Size(700, 124);
+            card.BackColor = Color.FromArgb(34, 37, 43);
+            card.BorderStyle = BorderStyle.FixedSingle;
+            card.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            Controls.Add(card);
+
+            activeSummaryLabel = MakeLabel("No active downloads.", 13F, FontStyle.Bold);
+            activeSummaryLabel.Location = new Point(20, 18);
+            activeSummaryLabel.Size = new Size(655, 28);
+            activeSummaryLabel.ForeColor = Color.White;
+            card.Controls.Add(activeSummaryLabel);
+
+            Label help = MakeLabel("Downloads keep running independently. The Active Downloads page opens only when you click its button.", 9F, FontStyle.Regular);
+            help.Location = new Point(20, 55);
+            help.Size = new Size(655, 45);
+            help.ForeColor = Color.Silver;
+            card.Controls.Add(help);
+
+            statusLabel = MakeLabel("Preparing download engine...", 9F, FontStyle.Regular);
+            statusLabel.Location = new Point(38, 370);
+            statusLabel.Size = new Size(700, 22);
+            statusLabel.ForeColor = Color.Gainsboro;
+            Controls.Add(statusLabel);
+
+            engineLabel = MakeLabel("", 8F, FontStyle.Regular);
+            engineLabel.Location = new Point(38, 397);
+            engineLabel.Size = new Size(700, 20);
+            engineLabel.ForeColor = Color.Gray;
+            Controls.Add(engineLabel);
+
+            Label note = MakeLabel("Closing YTGrab pauses active jobs. Resume them later from Active Downloads.", 8F, FontStyle.Regular);
+            note.Location = new Point(38, 438);
+            note.AutoSize = true;
+            note.ForeColor = Color.DimGray;
+            note.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            Controls.Add(note);
+        }
+
+        public Label MakeLabel(string text, float size, FontStyle style)
+        {
+            Label l = new Label();
+            l.Text = text;
+            l.Font = new Font("Segoe UI", size, style, GraphicsUnit.Point);
+            l.BackColor = Color.Transparent;
+            return l;
+        }
+
+        public Button MakeButton(string text, int x, int y, int w, int h)
+        {
+            Button b = new Button();
+            b.Text = text;
+            b.Location = new Point(x, y);
+            b.Size = new Size(w, h);
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderColor = Color.FromArgb(85, 89, 99);
+            b.BackColor = Color.FromArgb(48, 52, 61);
+            b.ForeColor = Color.White;
+            b.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            return b;
+        }
+
+        void StartToolSetup()
+        {
+            addButton.Enabled = false;
+            statusLabel.Text = "Preparing download engine...";
+            Thread t = new Thread(new ThreadStart(EnsureToolsWorker));
+            t.IsBackground = true;
+            t.Start();
+        }
+
+        void EnsureToolsWorker()
+        {
+            try
+            {
+                Directory.CreateDirectory(toolsDir);
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+                if (!File.Exists(ytDlpPath) || !HashMatches(ytDlpPath, YtDlpSha256))
+                {
+                    SetStatusSafe("Downloading yt-dlp engine...");
+                    DownloadFileVerified(YtDlpUrl, ytDlpPath, YtDlpSha256);
+                }
+
+                if (!File.Exists(ffmpegPath))
+                {
+                    SetStatusSafe("Downloading Windows 8 compatible FFmpeg...");
+                    string zipPath = Path.Combine(toolsDir, "ffmpeg.zip");
+                    DownloadFileVerified(FfmpegUrl, zipPath, FfmpegSha256);
+                    ExtractFfmpeg(zipPath);
+                    TryDelete(zipPath);
+                }
+
+                if (!File.Exists(ffmpegPath)) throw new Exception("FFmpeg extraction failed.");
+
+                toolsReady = true;
+                manager.SetEngineReady(true);
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    addButton.Enabled = true;
+                    statusLabel.Text = "Ready. Add downloads or open Active Downloads.";
+                    engineLabel.Text = "Engine: yt-dlp 2026.08.19 | FFmpeg 7.0.2 | Windows 8 compatible";
+                });
+            }
+            catch (Exception ex)
+            {
+                toolsReady = false;
+                manager.SetEngineReady(false);
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    statusLabel.Text = "Engine setup failed: " + ex.Message;
+                    engineLabel.Text = "Check your internet connection and reopen YTGrab.";
+                    MessageBox.Show(this, "Could not prepare the download engine.\r\n\r\n" + ex.Message, "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                });
+            }
+        }
+
+        void OpenAddWindow()
+        {
+            if (!toolsReady) return;
+            AddDownloadForm form = new AddDownloadForm(ytDlpPath, toolsDir, defaultOutput);
+            form.DownloadRequested += delegate(object sender, DownloadRequestEventArgs e)
+            {
+                defaultOutput = e.Folder;
+                manager.AddAndStart(e.Url, e.VideoId, e.Title, e.Quality, e.Folder);
+            };
+            form.Show(this);
+        }
+
+        void OpenActiveDownloads()
+        {
+            if (activeForm != null && !activeForm.IsDisposed)
+            {
+                if (activeForm.WindowState == FormWindowState.Minimized) activeForm.WindowState = FormWindowState.Normal;
+                activeForm.BringToFront();
+                activeForm.Activate();
+                return;
+            }
+            activeForm = new ActiveDownloadsForm(manager);
+            activeForm.FormClosed += delegate { activeForm = null; };
+            activeForm.Show(this);
+        }
+
+        void ManagerJobsChanged()
+        {
+            if (IsDisposed) return;
+            try
+            {
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    int count = manager.Count;
+                    activeButton.Text = count > 0 ? "Active Downloads (" + count.ToString() + ")" : "Active Downloads";
+                    activeSummaryLabel.Text = count == 0 ? "No active downloads." : count.ToString() + (count == 1 ? " active download" : " active downloads");
+                });
+            }
+            catch { }
+        }
+
+        void DownloadFileVerified(string url, string destination, string expectedHash)
+        {
+            string temp = destination + ".download";
+            TryDelete(temp);
+            using (WebClient wc = new WebClient())
+            {
+                wc.Headers.Add("User-Agent", "YTGrab/1.3.0");
+                wc.DownloadFile(url, temp);
+            }
+            if (!HashMatches(temp, expectedHash))
+            {
+                TryDelete(temp);
+                throw new Exception("Downloaded engine file failed integrity verification.");
+            }
+            TryDelete(destination);
+            File.Move(temp, destination);
+        }
+
+        bool HashMatches(string path, string expected)
+        {
+            try
+            {
+                using (SHA256 sha = SHA256.Create())
+                using (FileStream fs = File.OpenRead(path))
+                {
+                    byte[] hash = sha.ComputeHash(fs);
+                    StringBuilder sb = new StringBuilder(hash.Length * 2);
+                    for (int i = 0; i < hash.Length; i++) sb.Append(hash[i].ToString("x2"));
+                    return string.Equals(sb.ToString(), expected, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch { return false; }
+        }
+
+        void ExtractFfmpeg(string zipPath)
+        {
+            using (FileStream fs = File.OpenRead(zipPath))
+            using (ZipArchive archive = new ZipArchive(fs, ZipArchiveMode.Read))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    string normalized = entry.FullName.Replace('\\', '/');
+                    string destination = null;
+                    if (normalized.EndsWith("/bin/ffmpeg.exe", StringComparison.OrdinalIgnoreCase)) destination = ffmpegPath;
+                    if (normalized.EndsWith("/bin/ffprobe.exe", StringComparison.OrdinalIgnoreCase)) destination = ffprobePath;
+                    if (destination == null) continue;
+                    using (Stream input = entry.Open())
+                    using (FileStream output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None)) input.CopyTo(output);
+                }
+            }
+        }
+
+        void OpenFolder(string folder)
+        {
+            if (string.IsNullOrWhiteSpace(folder)) return;
+            try
+            {
+                Directory.CreateDirectory(folder);
+                Process.Start("explorer.exe", Quote(folder));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        void SetStatusSafe(string text)
+        {
+            if (IsDisposed) return;
+            try { BeginInvoke((MethodInvoker)delegate { statusLabel.Text = text; }); } catch { }
+        }
+
+        static string Quote(string s) { return "\"" + s.Replace("\"", "\\\"") + "\""; }
+        static void TryDelete(string path) { try { if (File.Exists(path)) File.Delete(path); } catch { } }
+
+        void OnFormClosing(object sender, FormClosingEventArgs e)
+        {
+            manager.PauseAllForShutdown();
+        }
+    }
+
+    public sealed class DownloadRequestEventArgs : EventArgs
+    {
+        public string Url { get; private set; }
+        public string VideoId { get; private set; }
+        public string Title { get; private set; }
+        public string Quality { get; private set; }
+        public string Folder { get; private set; }
+
+        public DownloadRequestEventArgs(string url, string videoId, string title, string quality, string folder)
+        {
+            Url = url;
+            VideoId = videoId;
+            Title = title;
+            Quality = quality;
+            Folder = folder;
+        }
+    }
+
+    public sealed class AddDownloadForm : Form
+    {
+        readonly string ytDlpPath;
+        readonly string toolsDir;
+        TextBox urlBox;
+        TextBox outputBox;
+        ComboBox qualityBox;
+        Button analyzeButton;
+        Button downloadButton;
+        Button browseButton;
+        Label titleLabel;
+        Label statusLabel;
+        volatile bool analyzing;
+        string currentVideoId = "";
+
+        public event EventHandler<DownloadRequestEventArgs> DownloadRequested;
+
+        public AddDownloadForm(string ytDlpPath, string toolsDir, string defaultOutput)
+        {
+            this.ytDlpPath = ytDlpPath;
+            this.toolsDir = toolsDir;
+            BuildUi(defaultOutput);
+        }
+
+        void BuildUi(string defaultOutput)
+        {
+            Text = "Add Download - YTGrab";
+            ClientSize = new Size(720, 410);
+            MinimumSize = new Size(720, 410);
+            StartPosition = FormStartPosition.CenterParent;
+            BackColor = Color.FromArgb(24, 26, 31);
+            ForeColor = Color.White;
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point);
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+
+            Label heading = MakeLabel("New Download", 22F, FontStyle.Bold);
+            heading.Location = new Point(25, 20);
+            heading.AutoSize = true;
+            Controls.Add(heading);
+
+            Label urlLabel = MakeLabel("YouTube URL", 9F, FontStyle.Bold);
+            urlLabel.Location = new Point(26, 78);
