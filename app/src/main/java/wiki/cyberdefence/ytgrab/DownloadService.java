@@ -15,13 +15,13 @@ import androidx.core.app.NotificationManagerCompat;
 import java.util.List;
 
 public class DownloadService extends Service implements DownloadController.Listener {
-    public static final String ACTION_START = "wiki.cyberdefence.ytgrab.START";
-    public static final String ACTION_PAUSE = "wiki.cyberdefence.ytgrab.PAUSE";
-    public static final String ACTION_RESUME = "wiki.cyberdefence.ytgrab.RESUME";
-    public static final String ACTION_DELETE = "wiki.cyberdefence.ytgrab.DELETE";
+    public static final String ACTION_START = "wiki.cyberdefence.vidown.START";
+    public static final String ACTION_PAUSE = "wiki.cyberdefence.vidown.PAUSE";
+    public static final String ACTION_RESUME = "wiki.cyberdefence.vidown.RESUME";
+    public static final String ACTION_DELETE = "wiki.cyberdefence.vidown.DELETE";
     public static final String EXTRA_ID = "id";
 
-    private static final String CHANNEL = "ytgrab_downloads";
+    private static final String CHANNEL = "vidown_downloads";
     private static final int NOTIFY = 8101;
     private DownloadController controller;
 

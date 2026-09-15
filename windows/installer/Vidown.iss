@@ -1,5 +1,5 @@
 #define MyAppName "Vidown"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.0.1"
 #define MyAppExeName "Vidown.exe"
 
 [Setup]
@@ -12,7 +12,7 @@ DefaultGroupName=Vidown
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=output
-OutputBaseFilename=Vidown_Setup_v2.0.0
+OutputBaseFilename=Vidown_Setup_v2.0.1
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -23,10 +23,9 @@ ArchitecturesAllowed=x64compatible
 Source: "..\build\Vidown.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [InstallDelete]
-Type: files; Name: "{app}\YTGrab.exe"
-Type: files; Name: "{autodesktop}\YTGrab.lnk"
-Type: files; Name: "{userprograms}\YTGrab.lnk"
-Type: files; Name: "{userprograms}\Uninstall YTGrab.lnk"
+Type: files; Name: "{app}\*Grab*.exe"
+Type: files; Name: "{autodesktop}\*Grab*.lnk"
+Type: files; Name: "{userprograms}\*Grab*.lnk"
 
 [Icons]
 Name: "{autodesktop}\Vidown"; Filename: "{app}\{#MyAppExeName}"

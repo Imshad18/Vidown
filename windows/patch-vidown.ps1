@@ -17,7 +17,7 @@ Replace-Required 'MakeLabel("YTGrab", 30F, FontStyle.Bold)' 'MakeLabel("Vidown",
 Replace-Required '"Concurrent YouTube downloads for Windows 8"' '"Concurrent video downloads for Windows 8"'
 Replace-Required '"Add Download - YTGrab"' '"Add Download - Vidown"'
 Replace-Required '"Active Downloads - YTGrab"' '"Active Downloads - Vidown"'
-Replace-Required '"YTGrab/1.3.0"' '"Vidown/2.0.0"'
+Replace-Required '"YTGrab/1.3.0"' '"Vidown/2.0.1"'
 $script:text = $script:text.Replace(', "YTGrab", MessageBoxButtons', ', "Vidown", MessageBoxButtons')
 Replace-Required 'defaultOutput = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "YTGrab");' 'defaultOutput = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Vidown");'
 Replace-Required '"YouTube URL"' '"Video URL"'
@@ -33,7 +33,61 @@ Replace-Required 'job.Completed += delegate { RemoveCompleted(job); };' 'job.Com
 Replace-Required 'List<DownloadJob> jobs = manager.Snapshot();' "List<DownloadJob> jobs = manager.Snapshot();`r`n            jobs.Reverse();"
 Replace-Required 'activeSummaryLabel.Text = count == 0 ? "No active downloads." : count.ToString() + (count == 1 ? " active download" : " active downloads");' 'activeSummaryLabel.Text = count == 0 ? "No download entries." : count.ToString() + (count == 1 ? " download entry" : " download entries");'
 
-Replace-Required '        Button openButton;' "        Button openButton;`r`n        Button playButton;"
+$oldManagerDelete = @'
+        public void Delete(DownloadJob job)
+        {
+            job.MarkDeleted();
+            lock (sync) { jobs.Remove(job); }
+            SaveState();
+            FireJobsChanged();
+            job.DiscardPartialFiles();
+        }
+'@
+$newManagerDelete = @'
+        public void Clear(DownloadJob job)
+        {
+            if (job == null || job.IsRunning) return;
+            job.MarkDeleted();
+            lock (sync) { jobs.Remove(job); }
+            SaveState();
+            FireJobsChanged();
+        }
+
+        public void Delete(DownloadJob job)
+        {
+            if (job == null) return;
+            job.MarkDeleted();
+            lock (sync) { jobs.Remove(job); }
+            SaveState();
+            FireJobsChanged();
+            job.DeleteAllFiles();
+        }
+'@
+Replace-Required $oldManagerDelete $newManagerDelete
+
+Replace-Required '        public void DiscardPartialFiles()' '        public void DeleteAllFiles()'
+$oldToken = @'
+                string token = string.IsNullOrWhiteSpace(Model.VideoId) ? "" : "[" + Model.VideoId + "]";
+                if (token.Length == 0) return;
+'@
+$newToken = @'
+                string stableId = string.IsNullOrWhiteSpace(Model.VideoId) ? Model.JobId.Substring(0, Math.Min(12, Model.JobId.Length)) : Model.VideoId;
+                string token = "[" + stableId + "]";
+'@
+Replace-Required $oldToken $newToken
+$oldDeleteFilter = @'
+                    string lower = name.ToLowerInvariant();
+                    if (lower.EndsWith(".part") || lower.IndexOf(".part-") >= 0 || lower.EndsWith(".ytdl") || Regex.IsMatch(lower, @"\.f\d+\.[^.]+$"))
+                    {
+                        try { File.Delete(path); } catch { }
+                    }
+'@
+$newDeleteFilter = @'
+                    try { File.Delete(path); } catch { }
+'@
+Replace-Required $oldDeleteFilter $newDeleteFilter
+
+Replace-Required '        Button openButton;' "        Button openButton;`r`n        Button playButton;`r`n        Button clearButton;"
 
 $oldButtons = @'
             openButton = MakeButton("Open", 721, 12, 65, 30);
@@ -43,9 +97,13 @@ $oldButtons = @'
             deleteButton = MakeButton("Delete", 794, 12, 70, 30);
 '@
 $newButtons = @'
-            playButton = MakeButton("Play", 648, 12, 65, 30);
+            playButton = MakeButton("Play", 575, 12, 65, 30);
             playButton.Click += delegate { PlayFile(); };
             Controls.Add(playButton);
+
+            clearButton = MakeButton("Clear", 648, 12, 65, 30);
+            clearButton.Click += delegate { ClearJob(); };
+            Controls.Add(clearButton);
 
             openButton = MakeButton("Folder", 721, 12, 65, 30);
             openButton.Click += delegate { OpenFolder(); };
@@ -64,7 +122,8 @@ $oldLayout = @'
 $newLayout = @'
             deleteButton.Left = right - deleteButton.Width;
             openButton.Left = deleteButton.Left - 8 - openButton.Width;
-            playButton.Left = openButton.Left - 8 - playButton.Width;
+            clearButton.Left = openButton.Left - 8 - clearButton.Width;
+            playButton.Left = clearButton.Left - 8 - playButton.Width;
             resumeButton.Left = playButton.Left - 8 - resumeButton.Width;
             pauseButton.Left = resumeButton.Left - 8 - pauseButton.Width;
 '@
@@ -77,11 +136,34 @@ $oldRefresh = @'
 '@
 $newRefresh = @'
             deleteButton.Enabled = true;
+            clearButton.Enabled = !running;
             openButton.Enabled = true;
             playButton.Enabled = !running && string.Equals(state, "Completed", StringComparison.OrdinalIgnoreCase);
             LayoutButtons();
 '@
 Replace-Required $oldRefresh $newRefresh
+
+$oldDeleteJob = @'
+        void DeleteJob()
+        {
+            DialogResult r = MessageBox.Show(this, "Delete this job from Active Downloads and discard its partial download files?", "YTGrab", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (r == DialogResult.Yes) manager.Delete(job);
+        }
+'@
+$newDeleteJob = @'
+        void ClearJob()
+        {
+            if (job.IsRunning) return;
+            manager.Clear(job);
+        }
+
+        void DeleteJob()
+        {
+            DialogResult r = MessageBox.Show(this, "Delete this entry and its downloaded or partial files? Use Clear if you only want to remove the entry from Vidown.", "Vidown", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (r == DialogResult.Yes) manager.Delete(job);
+        }
+'@
+Replace-Required $oldDeleteJob $newDeleteJob
 
 $playMethods = @'
         void PlayFile()
@@ -101,9 +183,8 @@ $playMethods = @'
             try
             {
                 if (string.IsNullOrWhiteSpace(job.Model.Folder) || !Directory.Exists(job.Model.Folder)) return null;
-                string token = string.IsNullOrWhiteSpace(job.Model.VideoId) ? "" : "[" + job.Model.VideoId + "]";
-                string titleKey = Regex.Replace(job.Model.Title ?? "", @"[^A-Za-z0-9]+", "").ToLowerInvariant();
-                if (titleKey.Length > 24) titleKey = titleKey.Substring(0, 24);
+                string stableId = string.IsNullOrWhiteSpace(job.Model.VideoId) ? job.Model.JobId.Substring(0, Math.Min(12, job.Model.JobId.Length)) : job.Model.VideoId;
+                string token = "[" + stableId + "]";
                 string best = null;
                 DateTime bestTime = DateTime.MinValue;
                 foreach (string file in Directory.GetFiles(job.Model.Folder))
@@ -111,15 +192,7 @@ $playMethods = @'
                     string name = Path.GetFileName(file);
                     string lower = name.ToLowerInvariant();
                     if (!(lower.EndsWith(".mp4") || lower.EndsWith(".mp3") || lower.EndsWith(".m4a") || lower.EndsWith(".webm") || lower.EndsWith(".mkv"))) continue;
-                    if (token.Length > 0)
-                    {
-                        if (name.IndexOf(token, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    }
-                    else if (titleKey.Length > 0)
-                    {
-                        string fileKey = Regex.Replace(Path.GetFileNameWithoutExtension(name), @"[^A-Za-z0-9]+", "").ToLowerInvariant();
-                        if (fileKey.IndexOf(titleKey, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    }
+                    if (name.IndexOf(token, StringComparison.OrdinalIgnoreCase) < 0) continue;
                     DateTime stamp = File.GetLastWriteTimeUtc(file);
                     if (stamp > bestTime) { best = file; bestTime = stamp; }
                 }
@@ -130,5 +203,8 @@ $playMethods = @'
 
 '@
 Replace-Required '        void OpenFolder()' ($playMethods + '        void OpenFolder()')
+
+$script:text = $script:text.Replace('YTGRABJOBS1', 'VIDOWNJOBS1')
+$script:text = $script:text.Replace('YTGrab', 'Vidown')
 
 [System.IO.File]::WriteAllText($Path, $script:text, (New-Object System.Text.UTF8Encoding($false)))

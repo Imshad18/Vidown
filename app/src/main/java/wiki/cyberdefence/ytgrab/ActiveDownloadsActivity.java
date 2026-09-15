@@ -1,5 +1,6 @@
 package wiki.cyberdefence.ytgrab;
 
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
@@ -142,11 +143,13 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         buttonsLp.setMargins(0, Ui.dp(this, 10), 0, 0);
         card.addView(buttons, buttonsLp);
 
+        boolean running = DownloadJob.DOWNLOADING.equals(j.status) || DownloadJob.QUEUED.equals(j.status);
+
         if (DownloadJob.COMPLETED.equals(j.status)) {
             Button play = Ui.button(this, "▶ Play");
             buttons.addView(play, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
             play.setOnClickListener(v -> play(j));
-        } else if (DownloadJob.DOWNLOADING.equals(j.status) || DownloadJob.QUEUED.equals(j.status)) {
+        } else if (running) {
             Button pause = Ui.button(this, "Pause");
             buttons.addView(pause, new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f));
             pause.setOnClickListener(v -> service(DownloadService.ACTION_PAUSE, j.id));
@@ -156,13 +159,30 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
             resume.setOnClickListener(v -> service(DownloadService.ACTION_RESUME, j.id));
         }
 
+        if (!running) {
+            Button clear = Ui.button(this, "Clear");
+            LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f);
+            clearLp.setMargins(Ui.dp(this, 8), 0, 0, 0);
+            buttons.addView(clear, clearLp);
+            clear.setOnClickListener(v -> DownloadController.getInstance(this).clear(j.id));
+        }
+
         Button delete = Ui.button(this, "Delete");
         LinearLayout.LayoutParams deleteLp = new LinearLayout.LayoutParams(0, Ui.dp(this, 48), 1f);
         deleteLp.setMargins(Ui.dp(this, 8), 0, 0, 0);
         buttons.addView(delete, deleteLp);
-        delete.setOnClickListener(v -> service(DownloadService.ACTION_DELETE, j.id));
+        delete.setOnClickListener(v -> confirmDelete(j));
 
         return card;
+    }
+
+    private void confirmDelete(DownloadJob job) {
+        new AlertDialog.Builder(this)
+            .setTitle("Delete download?")
+            .setMessage("This removes the entry and deletes its downloaded or partial files. Clear only removes the entry from this list.")
+            .setPositiveButton("Delete", (dialog, which) -> service(DownloadService.ACTION_DELETE, job.id))
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     private void play(DownloadJob job) {

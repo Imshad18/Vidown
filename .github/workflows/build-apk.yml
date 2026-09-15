@@ -34,15 +34,15 @@ jobs:
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Prepare APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Vidown_Android_v2.0.0.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Vidown_Android_v2.0.1.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: Vidown-Android
-          path: Vidown_Android_v2.0.0.apk
+          path: Vidown_Android_v2.0.1.apk
 
       - name: Upload APK to Vidown release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload youtube Vidown_Android_v2.0.0.apk --clobber
+        run: gh release upload youtube Vidown_Android_v2.0.1.apk --clobber

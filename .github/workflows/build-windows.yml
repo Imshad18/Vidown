@@ -47,18 +47,18 @@ jobs:
         run: |
           $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           if (!(Test-Path $iscc)) { throw "Inno Setup compiler not found." }
-          & $iscc windows\installer\YTGrab.iss
+          & $iscc windows\installer\Vidown.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (!(Test-Path windows\installer\output\Vidown_Setup_v2.0.0.exe)) { throw "Installer was not produced." }
+          if (!(Test-Path windows\installer\output\Vidown_Setup_v2.0.1.exe)) { throw "Installer was not produced." }
 
       - uses: actions/upload-artifact@v4
         with:
           name: Vidown-Windows-Installer
-          path: windows/installer/output/Vidown_Setup_v2.0.0.exe
+          path: windows/installer/output/Vidown_Setup_v2.0.1.exe
 
       - name: Upload installer to Vidown release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload youtube windows/installer/output/Vidown_Setup_v2.0.0.exe --clobber
+        run: gh release upload youtube windows/installer/output/Vidown_Setup_v2.0.1.exe --clobber
