@@ -18,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -43,16 +44,19 @@ public class MainActivity extends AppCompatActivity {
 
     private View build() {
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(Ui.backgroundColor(this));
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(Ui.dp(this, 20), Ui.dp(this, 24), Ui.dp(this, 20), Ui.dp(this, 18));
+        root.setBackgroundColor(Ui.backgroundColor(this));
         scroll.addView(root);
 
         TextView title = Ui.text(this, "YTGrab", 30, true);
         root.addView(title, Ui.matchWrap());
 
         TextView sub = Ui.text(this, "Download videos in the quality you choose.", 15, false);
-        sub.setTextColor(0xFF666666);
+        sub.setTextColor(Ui.secondaryColor(this));
         LinearLayout.LayoutParams subLp = Ui.matchWrap();
         subLp.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 22));
         root.addView(sub, subLp);
@@ -60,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
         url = new EditText(this);
         url.setHint("Paste video URL");
         url.setSingleLine(true);
+        url.setTextColor(Ui.primaryColor(this));
+        url.setHintTextColor(Ui.secondaryColor(this));
         root.addView(url, Ui.matchWrap());
 
         analyze = Ui.button(this, "Analyze");
@@ -79,25 +85,46 @@ public class MainActivity extends AppCompatActivity {
         activeLp.setMargins(0, Ui.dp(this, 22), 0, 0);
         root.addView(active, activeLp);
 
+        boolean dark = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("dark_mode", false);
+        Button darkMode = Ui.button(this, dark ? "Dark Mode: On" : "Dark Mode: Off");
+        LinearLayout.LayoutParams darkLp = Ui.matchWrap();
+        darkLp.setMargins(0, Ui.dp(this, 8), 0, 0);
+        root.addView(darkMode, darkLp);
+
         TextView folder = Ui.text(this, "Downloads are saved to Downloads/YTGrab", 13, false);
-        folder.setTextColor(0xFF666666);
+        folder.setTextColor(Ui.secondaryColor(this));
         LinearLayout.LayoutParams folderLp = Ui.matchWrap();
         folderLp.setMargins(0, Ui.dp(this, 14), 0, 0);
         root.addView(folder, folderLp);
+
+        String engine = YtDlpUpdater.versionName(this);
+        TextView engineInfo = Ui.text(this, engine.isEmpty() ? "Downloader engine updates automatically." : "Downloader engine: " + engine, 12, false);
+        engineInfo.setTextColor(Ui.secondaryColor(this));
+        LinearLayout.LayoutParams engineLp = Ui.matchWrap();
+        engineLp.setMargins(0, Ui.dp(this, 5), 0, 0);
+        root.addView(engineInfo, engineLp);
 
         TextView spacer = new TextView(this);
         LinearLayout.LayoutParams spacerLp = new LinearLayout.LayoutParams(1, 0, 1f);
         root.addView(spacer, spacerLp);
 
         TextView caution = Ui.text(this, "Caution: YTGrab is provided solely as a utility tool. Users are responsible for how they use the application. We are not responsible for any misuse, copyright infringement, unauthorized downloading, or other violations resulting from its use.", 11, false);
-        caution.setTextColor(0xFF777777);
+        caution.setTextColor(Ui.secondaryColor(this));
         caution.setPadding(0, Ui.dp(this, 28), 0, 0);
         root.addView(caution, Ui.matchWrap());
 
         analyze.setOnClickListener(v -> analyze());
         active.setOnClickListener(v -> startActivity(new Intent(this, ActiveDownloadsActivity.class)));
+        darkMode.setOnClickListener(v -> toggleDarkMode());
 
         return scroll;
+    }
+
+    private void toggleDarkMode() {
+        boolean current = getSharedPreferences("settings", MODE_PRIVATE).getBoolean("dark_mode", false);
+        boolean next = !current;
+        getSharedPreferences("settings", MODE_PRIVATE).edit().putBoolean("dark_mode", next).apply();
+        AppCompatDelegate.setDefaultNightMode(next ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
     }
 
     private void analyze() {
@@ -112,13 +139,26 @@ public class MainActivity extends AppCompatActivity {
 
         executor.submit(() -> {
             try {
+                YtDlpUpdater.ensureFresh(this);
                 VideoInfo info = YoutubeDL.getInstance().getInfo(u);
                 String t = info.getTitle();
                 if (t == null || t.trim().isEmpty()) t = "Video";
                 String finalTitle = t;
                 runOnUiThread(() -> showQuality(u, finalTitle));
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(this, e.getMessage() == null ? "Could not analyze video" : e.getMessage(), Toast.LENGTH_LONG).show());
+            } catch (Exception firstError) {
+                boolean updated = YtDlpUpdater.forceUpdate(this);
+                if (updated) {
+                    try {
+                        VideoInfo info = YoutubeDL.getInstance().getInfo(u);
+                        String t = info.getTitle();
+                        if (t == null || t.trim().isEmpty()) t = "Video";
+                        String finalTitle = t;
+                        runOnUiThread(() -> showQuality(u, finalTitle));
+                        return;
+                    } catch (Exception ignored) {
+                    }
+                }
+                runOnUiThread(() -> Toast.makeText(this, friendlyError(firstError), Toast.LENGTH_LONG).show());
             } finally {
                 runOnUiThread(() -> {
                     analyze.setEnabled(true);
@@ -126,6 +166,20 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    private String friendlyError(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.trim().isEmpty()) return "Could not analyze video.";
+        if (message.contains("HTTP Error 403") || message.contains("403: Forbidden")) {
+            return "YouTube rejected the request. YTGrab refreshed its downloader engine. Try Analyze again.";
+        }
+        String[] lines = message.split("\\r?\\n");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i].trim();
+            if (!line.isEmpty() && !line.startsWith("WARNING:")) return line;
+        }
+        return "Could not analyze video.";
     }
 
     private void showQuality(String u, String title) {
