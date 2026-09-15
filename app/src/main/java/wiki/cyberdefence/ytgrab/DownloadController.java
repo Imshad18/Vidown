@@ -9,8 +9,10 @@ import com.yausername.youtubedl_android.YoutubeDLRequest;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -53,7 +55,15 @@ public class DownloadController {
     private void persist() { JobStore.save(app, getJobs()); }
 
     public List<DownloadJob> getJobs() {
-        synchronized (jobs) { return new ArrayList<>(jobs.values()); }
+        List<DownloadJob> out;
+        synchronized (jobs) { out = new ArrayList<>(jobs.values()); }
+        out.sort(new Comparator<DownloadJob>() {
+            @Override
+            public int compare(DownloadJob a, DownloadJob b) {
+                return Long.compare(b.createdAt, a.createdAt);
+            }
+        });
+        return out;
     }
 
     public List<DownloadJob> getActiveJobs() {
@@ -95,7 +105,7 @@ public class DownloadController {
                 finishIfStillRunning(id);
             } catch (Exception first) {
                 if (!isStillRunning(id)) return;
-                if (is403(first)) {
+                if (is403(first) && isYouTubeUrl(current.url)) {
                     try {
                         runDownload(current, id, "web_safari");
                         finishIfStillRunning(id);
@@ -129,10 +139,17 @@ public class DownloadController {
                 DownloadJob j = jobs.get(id);
                 if (j != null && DownloadJob.DOWNLOADING.equals(j.status)) {
                     int p = Math.max(0, Math.min(99, Math.round(progress)));
+                    boolean changed = false;
                     if (p != j.progress) {
                         j.progress = p;
-                        notifyChanged();
+                        changed = true;
                     }
+                    String detected = extractDestination(line);
+                    if (detected != null && !detected.equals(j.outputPath)) {
+                        j.outputPath = detected;
+                        changed = true;
+                    }
+                    if (changed) notifyChanged();
                 }
                 return Unit.INSTANCE;
             }
@@ -173,9 +190,60 @@ public class DownloadController {
         return request;
     }
 
+    private String extractDestination(String line) {
+        if (line == null) return null;
+        int at = line.indexOf("Destination:");
+        if (at < 0) return null;
+        String path = line.substring(at + "Destination:".length()).trim();
+        if (path.isEmpty()) return null;
+        return path;
+    }
+
+    public File findOutputFile(DownloadJob job) {
+        if (job == null) return null;
+        if (job.outputPath != null && !job.outputPath.trim().isEmpty()) {
+            File direct = new File(job.outputPath.trim());
+            if (direct.isFile()) return direct;
+        }
+
+        File dir = getDownloadDir();
+        File[] files = dir.listFiles();
+        if (files == null || files.length == 0) return null;
+
+        String normalizedTitle = normalize(job.title);
+        File best = null;
+        long bestTime = Long.MIN_VALUE;
+        for (File f : files) {
+            if (!f.isFile()) continue;
+            String lower = f.getName().toLowerCase(Locale.US);
+            boolean playable = lower.endsWith(".mp4") || lower.endsWith(".mp3") || lower.endsWith(".m4a") || lower.endsWith(".webm") || lower.endsWith(".mkv");
+            if (!playable) continue;
+            String normalizedName = normalize(f.getName());
+            if (!normalizedTitle.isEmpty() && !normalizedName.contains(normalizedTitle) && !normalizedTitle.contains(normalizedName)) continue;
+            if (f.lastModified() > bestTime) {
+                best = f;
+                bestTime = f.lastModified();
+            }
+        }
+        return best;
+    }
+
+    private String normalize(String value) {
+        if (value == null) return "";
+        String s = value.toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", "");
+        if (s.length() > 32) s = s.substring(0, 32);
+        return s;
+    }
+
     private boolean is403(Exception e) {
         String message = e.getMessage();
         return message != null && (message.contains("403") || message.contains("Forbidden"));
+    }
+
+    private boolean isYouTubeUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase(Locale.US);
+        return lower.contains("youtube.com") || lower.contains("youtu.be");
     }
 
     private boolean isStillRunning(String id) {
@@ -189,6 +257,8 @@ public class DownloadController {
             j.progress = 100;
             j.status = DownloadJob.COMPLETED;
             j.error = "";
+            File output = findOutputFile(j);
+            if (output != null) j.outputPath = output.getAbsolutePath();
             notifyChanged();
         }
     }
@@ -206,7 +276,7 @@ public class DownloadController {
         String message = e.getMessage();
         if (message == null || message.trim().isEmpty()) return "Download failed.";
         if (message.contains("403") || message.contains("Forbidden")) {
-            return "YouTube returned HTTP 403. YTGrab updated yt-dlp and retried with two fallback clients, but this video is still being blocked. Try again later or choose another quality.";
+            return "The site returned HTTP 403. Vidown refreshed its downloader engine and retried where possible, but this media is still being blocked. Try again later or choose another quality.";
         }
         int errorAt = message.lastIndexOf("ERROR:");
         if (errorAt >= 0) message = message.substring(errorAt + 6).trim();
