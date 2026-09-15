@@ -9,16 +9,17 @@ It supports multiple available resolutions, MP4 video downloads, MP3 audio-only 
 # Download
 
 **Windows:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Setup_v1.2.1.exe
+https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Setup_v1.3.0.exe
 
 **Android APK:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.1.0.apk
+https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.2.0.apk
 
 ## Features
 
 * Download YouTube videos in multiple available resolutions
 * Supports 720p, 1080p, 1440p, 4K and other available qualities
 * MP4 video downloads
+* Compatible MP4 output using H.264/AVC video, AAC audio, yuv420p and faststart for broad Windows, Android and WhatsApp compatibility
 * MP3 audio-only downloads
 * Automatic video and audio merging when required
 * Multiple simultaneous downloads
@@ -63,7 +64,7 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.1
 
 ### Windows
 
-1. Download `YTGrab_Setup_v1.2.1.exe` from the link above or the **Releases** section.
+1. Download `YTGrab_Setup_v1.3.0.exe` from the link above or the **Releases** section.
 2. Run the installer.
 3. Complete the installation.
 4. Launch **YTGrab** using the Desktop shortcut or Start Menu.
@@ -78,7 +79,7 @@ Administrator permission is normally not required.
 
 ### Android
 
-1. Download `YTGrab_Android_v1.1.0.apk` from the link above.
+1. Download `YTGrab_Android_v1.2.0.apk` from the link above.
 2. Open the APK on your Android device.
 3. Allow installation from your browser or file manager if Android asks.
 4. Install and launch **YTGrab**.
@@ -93,6 +94,8 @@ Administrator permission is normally not required.
 6. Click **Start Download**.
 
 You can immediately add another video while the previous download continues.
+
+For video downloads, YTGrab converts the final file to a broadly compatible MP4 when needed. High-resolution videos can take additional time after the download reaches the conversion stage.
 
 ## Active Downloads
 
@@ -162,7 +165,7 @@ YTGrab uses:
 * .NET Framework / Windows desktop components on Windows
 * Native Android components on Android
 
-FFmpeg is used when separate video and audio streams need to be merged.
+FFmpeg is used when separate video and audio streams need to be merged and when a video needs conversion to a broadly compatible MP4.
 
 ## Windows Security Warning
 
@@ -198,6 +201,6 @@ YTGrab relies on the excellent open-source projects:
 Download the latest Windows installer or Android APK from the GitHub **Releases** page:
 
 ```text
-YTGrab_Setup_v1.2.1.exe
-YTGrab_Android_v1.1.0.apk
+YTGrab_Setup_v1.3.0.exe
+YTGrab_Android_v1.2.0.apk
 ```
