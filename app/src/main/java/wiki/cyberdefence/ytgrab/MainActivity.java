@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams spacerLp = new LinearLayout.LayoutParams(1, 0, 1f);
         root.addView(spacer, spacerLp);
 
-        TextView caution = Ui.text(this, "Caution: YTGrab is provided solely as a utility tool. Users are responsible for how they use the application. We are not responsible for any misuse, copyright infringement, unauthorized downloading, or other violations resulting from its use.", 11, false);
+        TextView caution = Ui.text(this, "Caution: Vidown is provided solely as a utility tool. Users are responsible for how they use the application. We are not responsible for any misuse, copyright infringement, unauthorized downloading, or other violations resulting from its use.", 11, false);
         caution.setTextColor(Ui.secondary(this));
         caution.setPadding(0, Ui.dp(this, 28), 0, 0);
         root.addView(caution, Ui.matchWrap());
