@@ -31,6 +31,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(build());
+        Ui.applySystemBars(this);
     }
 
     @Override
@@ -51,6 +52,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(Ui.dp(this, 18), Ui.dp(this, 20), Ui.dp(this, 18), Ui.dp(this, 12));
+        root.setBackgroundColor(Ui.background(this));
 
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
@@ -66,6 +68,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         back.setOnClickListener(v -> finish());
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(Ui.background(this));
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
@@ -75,7 +78,9 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
     }
 
     @Override
-    public void onChanged() { runOnUiThread(this::render); }
+    public void onChanged() {
+        runOnUiThread(this::render);
+    }
 
     private void render() {
         if (list == null) return;
@@ -84,7 +89,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
 
         if (jobs.isEmpty()) {
             TextView empty = Ui.text(this, "No downloads yet.", 15, false);
-            empty.setTextColor(0xFF666666);
+            empty.setTextColor(Ui.secondary(this));
             empty.setPadding(0, Ui.dp(this, 28), 0, 0);
             list.addView(empty, Ui.matchWrap());
             return;
@@ -97,7 +102,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14), Ui.dp(this, 14));
-        card.setBackgroundColor(0xFFF2F2F2);
+        card.setBackgroundColor(Ui.surface(this));
 
         LinearLayout.LayoutParams outer = Ui.matchWrap();
         outer.setMargins(0, Ui.dp(this, 12), 0, 0);
@@ -107,7 +112,7 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
         card.addView(title, Ui.matchWrap());
 
         TextView meta = Ui.text(this, j.quality + "  •  " + j.status + "  •  " + j.progress + "%", 13, false);
-        meta.setTextColor(0xFF666666);
+        meta.setTextColor(Ui.secondary(this));
         LinearLayout.LayoutParams metaLp = Ui.matchWrap();
         metaLp.setMargins(0, Ui.dp(this, 4), 0, Ui.dp(this, 8));
         card.addView(meta, metaLp);
@@ -119,8 +124,10 @@ public class ActiveDownloadsActivity extends AppCompatActivity implements Downlo
 
         if (DownloadJob.FAILED.equals(j.status) && j.error != null && !j.error.isEmpty()) {
             TextView error = Ui.text(this, j.error, 11, false);
-            error.setTextColor(0xFFB00020);
-            card.addView(error, Ui.matchWrap());
+            error.setTextColor(Ui.error(this));
+            LinearLayout.LayoutParams errorLp = Ui.matchWrap();
+            errorLp.setMargins(0, Ui.dp(this, 8), 0, 0);
+            card.addView(error, errorLp);
         }
 
         LinearLayout buttons = new LinearLayout(this);
