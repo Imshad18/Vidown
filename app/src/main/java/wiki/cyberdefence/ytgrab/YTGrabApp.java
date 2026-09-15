@@ -9,11 +9,13 @@ public class YTGrabApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        ThemePrefs.apply(this);
         try {
             YoutubeDL.getInstance().init(this);
             FFmpeg.getInstance().init(this);
         } catch (Exception ignored) {
         }
         DownloadController.getInstance(this);
+        new Thread(() -> YtDlpUpdater.ensureUpdated(this), "ytgrab-engine-update").start();
     }
 }

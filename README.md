@@ -12,7 +12,7 @@ It supports multiple available resolutions, MP4 video downloads, MP3 audio-only 
 https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Setup_v1.2.1.exe
 
 **Android APK:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.0.0.apk
+https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.1.0.apk
 
 ## Features
 
@@ -25,11 +25,15 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.0
 * Add new downloads while others are running
 * Separate **Active Downloads** page
 * Individual progress bars for every download
+* Download progress shown in Android notifications
+* Notifications automatically disappear when no download is active
 * Pause individual downloads
 * Resume paused downloads
 * Resume incomplete downloads after restarting the app or device
 * Delete individual download jobs
 * Cancel downloads
+* Android dark mode option
+* Android automatically refreshes the yt-dlp engine and retries YouTube HTTP 403 failures with fallback clients
 * Choose download destination
 * Open download folder directly
 * No Python installation required
@@ -51,7 +55,7 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/YTGrab_Android_v1.0
 
 ### Android
 
-* Android device compatible with the APK build
+* Android 7.0 or newer
 * Internet connection
 * Permission to install APK files from your browser or file manager when required
 
@@ -74,7 +78,7 @@ Administrator permission is normally not required.
 
 ### Android
 
-1. Download `YTGrab_Android_v1.0.0.apk` from the link above.
+1. Download `YTGrab_Android_v1.1.0.apk` from the link above.
 2. Open the APK on your Android device.
 3. Allow installation from your browser or file manager if Android asks.
 4. Install and launch **YTGrab**.
@@ -195,5 +199,5 @@ Download the latest Windows installer or Android APK from the GitHub **Releases*
 
 ```text
 YTGrab_Setup_v1.2.1.exe
-YTGrab_Android_v1.0.0.apk
+YTGrab_Android_v1.1.0.apk
 ```
