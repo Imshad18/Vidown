@@ -1,0 +1,30 @@
+name: Cleanup public branding
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean release metadata and old assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -e
+          gh release edit youtube --repo "$GITHUB_REPOSITORY" --tag vidown-v2.0.1 --title "Vidown v2.0.1"
+          for asset in $(gh release view vidown-v2.0.1 --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name | select(startswith("YTGrab_"))'); do
+            gh release delete-asset vidown-v2.0.1 "$asset" --repo "$GITHUB_REPOSITORY" -y
+          done
+
+      - name: Update repository description when permitted
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY" -f description='Vidown is a video downloader for Windows and Android. NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading.' || true
