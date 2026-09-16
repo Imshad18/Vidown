@@ -30,5 +30,4 @@ https://github.com/Imshad18/YTgrab/releases/latest/download/Vidown_Android_v2.0.
 3. Allow installation from your browser or file manager if Android asks.
 4. Install and launch **Vidown**.
 
-The Android package ID is kept compatible with previous Android builds so the new APK can update the existing installation and preserve saved jobs where possible.
 
