@@ -16,7 +16,7 @@ jobs:
           ref: clear-v2.0.1
 
       - name: Remove platform-name references
-        run: python3 .github/sanitize2.py
+        run: python3 .github/sanitize3.py
 
       - name: Commit sanitized files
         shell: bash
