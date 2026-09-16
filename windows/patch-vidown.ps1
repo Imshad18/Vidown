@@ -14,18 +14,11 @@ function Replace-Required([string]$Old, [string]$New) {
 
 Replace-Required 'Text = "YTGrab";' 'Text = "Vidown";'
 Replace-Required 'MakeLabel("YTGrab", 30F, FontStyle.Bold)' 'MakeLabel("Vidown", 30F, FontStyle.Bold)'
-Replace-Required '"Concurrent YouTube downloads for Windows 8"' '"Concurrent video downloads for Windows 8"'
 Replace-Required '"Add Download - YTGrab"' '"Add Download - Vidown"'
 Replace-Required '"Active Downloads - YTGrab"' '"Active Downloads - Vidown"'
 Replace-Required '"YTGrab/1.3.0"' '"Vidown/2.0.1"'
 $script:text = $script:text.Replace(', "YTGrab", MessageBoxButtons', ', "Vidown", MessageBoxButtons')
 Replace-Required 'defaultOutput = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "YTGrab");' 'defaultOutput = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Vidown");'
-Replace-Required '"YouTube URL"' '"Video URL"'
-Replace-Required '"Paste a YouTube link and click Analyze."' '"Paste a video link and click Analyze."'
-Replace-Required '"Enter a valid YouTube URL."' '"Enter a valid video URL."'
-Replace-Required '"Download started in the background. Paste another YouTube link."' '"Download started in the background. Paste another video link."'
-Replace-Required '"YouTube video"' '"Video"'
-Replace-Required 'return host == "youtu.be" || host == "youtube.com" || host.EndsWith(".youtube.com") || host == "youtube-nocookie.com" || host.EndsWith(".youtube-nocookie.com");' 'return true;'
 Replace-Required 'string format = "bv*[height<=" + height.ToString() + "]+ba/b[height<=" + height.ToString() + "]";' 'string format = "bv*[height<=" + height.ToString() + "]+ba/b[height<=" + height.ToString() + "]/b";'
 
 Replace-Required 'if (string.Equals(model.State, "Completed", StringComparison.OrdinalIgnoreCase)) continue;' ''

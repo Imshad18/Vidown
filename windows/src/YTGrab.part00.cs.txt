@@ -79,7 +79,7 @@ namespace YTGrab
             heading.AutoSize = true;
             Controls.Add(heading);
 
-            Label sub = MakeLabel("Concurrent YouTube downloads for Windows 8", 10F, FontStyle.Regular);
+            Label sub = MakeLabel("Concurrent video downloads for Windows 8", 10F, FontStyle.Regular);
             sub.ForeColor = Color.Silver;
             sub.Location = new Point(38, 74);
             sub.AutoSize = true;
@@ -396,5 +396,5 @@ namespace YTGrab
             heading.AutoSize = true;
             Controls.Add(heading);
 
-            Label urlLabel = MakeLabel("YouTube URL", 9F, FontStyle.Bold);
+            Label urlLabel = MakeLabel("Video URL", 9F, FontStyle.Bold);
             urlLabel.Location = new Point(26, 78);

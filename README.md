@@ -2,26 +2,26 @@
 
 Vidown is a lightweight video downloader for **Windows** and **Android**.
 
-Paste a supported video link, analyze it, choose the available quality, and download. Vidown uses yt-dlp, so it can work with YouTube, Instagram, Facebook, X/Twitter, TikTok, Vimeo, Reddit, direct media links, and many other yt-dlp-supported sites when the media is publicly accessible or otherwise available to the user.
+Paste a supported video link, analyze it, choose the available quality, and download. Vidown uses yt-dlp to support a wide range of video and media websites, along with direct media links, when the media is publicly accessible or otherwise available to the user.
 
 # IMPORTANT NOTE: Only download videos that you own, have permission to download, or that are legally available for downloading. Vidown is provided solely as a utility tool. Users are responsible for ensuring they have the legal right or permission to download any content, and the developers are not responsible for copyright infringement, misuse, or any other violation resulting from use of the application.
 
 # Download
 
 **Windows:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Setup_v2.0.1.exe
+https://github.com/Imshad18/YTgrab/releases/latest/download/Vidown_Setup_v2.0.1.exe
 
 **Android APK:**  
-https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Android_v2.0.1.apk
+https://github.com/Imshad18/YTgrab/releases/latest/download/Vidown_Android_v2.0.1.apk
 
 ## Features
 
-* Download from YouTube, Instagram, Facebook, X/Twitter, TikTok, Vimeo, Reddit and many other yt-dlp-supported sites
+* Download from a wide range of yt-dlp-supported video and media websites
 * Supports direct video/media URLs where yt-dlp supports them
 * Analyze available video qualities before downloading
 * Supports 720p, 1080p, 1440p, 4K and other available qualities
 * MP4 video downloads
-* Compatible MP4 output using H.264/AVC video, AAC audio, yuv420p and faststart for broad Windows, Android and WhatsApp compatibility
+* Compatible MP4 output using H.264/AVC video, AAC audio, yuv420p and faststart for broad device and messaging-app compatibility
 * MP3 audio-only downloads
 * Automatic video and audio merging when required
 * Multiple simultaneous downloads
@@ -38,7 +38,7 @@ https://github.com/Imshad18/YTgrab/releases/download/youtube/Vidown_Android_v2.0
 * Resume paused downloads
 * Resume incomplete downloads after restarting the app or device
 * Android dark mode option
-* Android automatically refreshes the yt-dlp engine and retries supported YouTube HTTP 403 failures with fallback clients
+* Android automatically refreshes the yt-dlp engine before downloads
 * Choose download destination on Windows
 * Open download folder directly
 * No Python installation required

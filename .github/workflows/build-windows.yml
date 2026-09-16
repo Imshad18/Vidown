@@ -56,9 +56,11 @@ jobs:
           name: Vidown-Windows-Installer
           path: windows/installer/output/Vidown_Setup_v2.0.1.exe
 
-      - name: Upload installer to Vidown release
+      - name: Upload installer to latest release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload youtube windows/installer/output/Vidown_Setup_v2.0.1.exe --clobber
+        run: |
+          $tag = gh release list --limit 1 --json tagName --jq '.[0].tagName'
+          gh release upload $tag windows/installer/output/Vidown_Setup_v2.0.1.exe --clobber
