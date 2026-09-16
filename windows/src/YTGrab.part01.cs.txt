@@ -14,7 +14,7 @@
             analyzeButton.Click += delegate { AnalyzeUrl(); };
             Controls.Add(analyzeButton);
 
-            titleLabel = MakeLabel("Paste a YouTube link and click Analyze.", 10F, FontStyle.Regular);
+            titleLabel = MakeLabel("Paste a video link and click Analyze.", 10F, FontStyle.Regular);
             titleLabel.Location = new Point(26, 147);
             titleLabel.Size = new Size(665, 43);
             titleLabel.ForeColor = Color.Gainsboro;
@@ -102,9 +102,9 @@
         {
             if (analyzing) return;
             string url = urlBox.Text.Trim();
-            if (!IsYouTubeUrl(url))
+            if (!IsVideoUrl(url))
             {
-                MessageBox.Show(this, "Enter a valid YouTube URL.", "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "Enter a valid Video URL.", "YTGrab", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -178,7 +178,7 @@
             if (qualityBox.SelectedItem == null) return;
             string url = urlBox.Text.Trim();
             string folder = outputBox.Text.Trim();
-            if (!IsYouTubeUrl(url) || string.IsNullOrWhiteSpace(folder)) return;
+            if (!IsVideoUrl(url) || string.IsNullOrWhiteSpace(folder)) return;
             try { Directory.CreateDirectory(folder); }
             catch (Exception ex)
             {
@@ -195,7 +195,7 @@
             qualityBox.Enabled = false;
             downloadButton.Enabled = false;
             analyzeButton.Enabled = true;
-            titleLabel.Text = "Download started in the background. Paste another YouTube link.";
+            titleLabel.Text = "Download started in the background. Paste another video link.";
             statusLabel.Text = "Added. View progress from Active Downloads when you want.";
             urlBox.Focus();
         }
@@ -256,13 +256,12 @@
             }
         }
 
-        static bool IsYouTubeUrl(string text)
+        static bool IsVideoUrl(string text)
         {
             Uri uri;
             if (!Uri.TryCreate(text, UriKind.Absolute, out uri)) return false;
             if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return false;
-            string host = uri.Host.ToLowerInvariant();
-            return host == "youtu.be" || host == "youtube.com" || host.EndsWith(".youtube.com") || host == "youtube-nocookie.com" || host.EndsWith(".youtube-nocookie.com");
+            return true;
         }
 
         static string Quote(string s) { return "\"" + s.Replace("\"", "\\\"") + "\""; }
@@ -367,7 +366,7 @@
             model.JobId = Guid.NewGuid().ToString("N");
             model.Url = url;
             model.VideoId = videoId == null ? "" : videoId.Trim();
-            model.Title = string.IsNullOrWhiteSpace(title) ? "YouTube video" : title;
+            model.Title = string.IsNullOrWhiteSpace(title) ? "Video" : title;
             model.Quality = quality;
             model.Folder = folder;
             model.Progress = 0;
